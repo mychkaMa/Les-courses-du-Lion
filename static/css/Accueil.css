@@ -1,53 +1,24 @@
 #map {
-  width : 100%;
-  height : 1000px;
-  position:relative;
-  bottom:0;
-  right:0;
-  z-index:999;
-}
-
-.grid-container-element { 
-  display: grid; 
-  grid-template-columns: 1fr 2fr 1fr; 
-  grid-gap: 10px; 
-  width: 100%; 
-} 
-
-.grid-child-element { 
-  margin: 10px;
+  width: 1100px;
+  height: 650px;
+  position: relative;
+  bottom: 0;
+  right: 0;
 }
 
 #bienvenue {
   text-align: justify;
 }
 
-#course { 
-  margin-left: 30px;
-  }
-
-#filtre_course {
-  columns:3;  
-  margin-left: 30px;
-  }
-
-#find_bulle{
-  position : relative;
-  height: 60px;
-  margin-top: 45px;
-  cursor: pointer;
+.column {
+  float: left;
+  font-size: 12px;
+  margin-left: 20px;
 }
-
-.u-custom-color-2 {
-  background-color: #accea2;
-}
-/* ....................... */
-/* ... ICI ............... */
-/* ....................... */
 
 
 .searchBar {
-  border: 2px solid rgb(140, 169,111) !important;
+  border: 2px solid rgb(140, 169, 111) !important;
   max-width: 500px;
 }
 
@@ -56,44 +27,42 @@
 }
 
 .leaflet-control-geocoder-ban-selected {
-    background-color: rgba(128, 204, 40, 0.3) !important;
+  background-color: rgba(128, 204, 40, 0.3) !important;
 }
 
 .leaflet-legend {
-  border: 2px solid rgb(140, 169,111) !important;
+  border: 2px solid rgb(140, 169, 111) !important;
 }
 
 /* Style Pop-Up*/
-styleTitre{
+styleTitre {
   color: rgb(0, 0, 0);
-  font-family: "Century Gothic",sans-serif;
+  font-family: "Century Gothic", sans-serif;
   font-style: bold;
   text-align: center;
-  text-decoration : underline;
+  text-decoration: underline;
   font-size: 18px
- }  
-styleColonne{
+}
+
+styleColonne {
   color: rgb(0, 0, 0);
-  font-family: "Century Gothic",sans-serif;
+  font-family: "Century Gothic", sans-serif;
   font-style: normal;
   font-weight: 300;
   text-align: center;
   line-height: normal;
- } 
-styleText{
+}
+
+styleText {
   color: rgb(0, 0, 0);
-  font-family: "Century Gothic",sans-serif;
+  font-family: "Century Gothic", sans-serif;
   font-style: normal;
   font-weight: 300;
   text-align: center;
   line-height: normal;
- } 
+}
 
-
-/* ....................... */
-/* CHANGEMENT ICI JUSQU... */
-/* ....................... */
- @import url('https://fonts.googleapis.com/css?family=Quicksand:400,700&display=swap');
+@import url('https://fonts.googleapis.com/css?family=Quicksand:400,700&display=swap');
 
 .upgrade-btn {
   display: block;
@@ -112,59 +81,19 @@ styleText{
 .upgrade-btn:hover {
   background-color: #0f94d6;
 }
-#find_bulle{
-  position : relative;
-}
+
+
+
 /*---------------------------------------------------------------------------------------------------  */
 @import url("https://fonts.googleapis.com/css?family=Source+Sans+Pro:600&display=swap");
+
 * {
   box-sizing: border-box;
 }
-*::before, *::after {
+
+*::before,
+*::after {
   box-sizing: border-box;
-}
-
-
-
-input[type=checkbox] {
-  position: relative;
-  width: 1.5em;
-  height: 1.5em;
-  color: #363839;
-  border: 1px solid #bdc1c6;
-  border-radius: 4px;
-  -webkit-appearance: none;
-     -moz-appearance: none;
-          appearance: none;
-  outline: 0;
-  cursor: pointer;
-  transition: background 175ms cubic-bezier(0.1, 0.1, 0.25, 1);
-}
-input[type=checkbox]::before {
-  position: absolute;
-  content: "";
-  display: block;
-  top: 2px;
-  left: 7px;
-  width: 8px;
-  height: 14px;
-  border-style: solid;
-  border-color: #fff;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-  opacity: 0;
-}
-input[type=checkbox]:checked {
-  color: #fff;
-  border-color: #06842c;
-  background: #06842c;
-}
-input[type=checkbox]:checked::before {
-  opacity: 1;
-}
-input[type=checkbox]:checked ~ label::after {
-  -webkit-clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
-          clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
 }
 
 label {
@@ -174,72 +103,81 @@ label {
   font-weight: 600;
   padding: 0 0.25em 0;
   -webkit-user-select: none;
-     -moz-user-select: none;
-      -ms-user-select: none;
-          user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
+
 label::before {
   position: absolute;
   content: attr(data-content);
   color: #9c9e9f;
   -webkit-clip-path: polygon(0 0, 0 0, 0% 100%, 0 100%);
-          clip-path: polygon(0 0, 0 0, 0% 100%, 0 100%);
+  clip-path: polygon(0 0, 0 0, 0% 100%, 0 100%);
   text-decoration: line-through;
   text-decoration-thickness: 3px;
   -webkit-text-decoration-color: #363839;
-          text-decoration-color: #363839;
+  text-decoration-color: #363839;
   transition: -webkit-clip-path 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
   transition: clip-path 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
   transition: clip-path 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94), -webkit-clip-path 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
- .Alimentaire_popup .leaflet-popup-content-wrapper,
- .Alimentaire_popup .leaflet-popup-tip {
-     background-color: #fb8072;
-  
- }
- .BienEtre_popup .leaflet-popup-content-wrapper,
- .BienEtre_popup .leaflet-popup-tip {
-     background-color: #fccde5;
-  
- }
- .EquipementMaison_popup .leaflet-popup-content-wrapper,
- .EquipementMaison_popup .leaflet-popup-tip {
-     background-color: #8dd3c7;
+.Alimentaire_popup .leaflet-popup-content-wrapper,
+.Alimentaire_popup .leaflet-popup-tip {
+  background-color: #fb8072;
 
- }
- .Textile_popup .leaflet-popup-content-wrapper,
- .Textile_popup .leaflet-popup-tip {
-     background-color: #80b1d3;
- }
- .Don_popup .leaflet-popup-content-wrapper,
- .Don_popup .leaflet-popup-tip {
-     background-color: #ffffb3;
-  
- }
- .Activite_popup .leaflet-popup-content-wrapper,
- .Activite_popup .leaflet-popup-tip {
-     background-color: #bebada;
-  
- }
- .Restauration_popup .leaflet-popup-content-wrapper,
- .Restauration_popup .leaflet-popup-tip {
-     background-color: #fdb462;
-  
- }
- .Dechet_popup .leaflet-popup-content-wrapper,
- .Dechet_popup .leaflet-popup-tip {
-     background-color: #b3de69;
-  
- }
- .Reparation_popup .leaflet-popup-content-wrapper,
- .Reparation_popup .leaflet-popup-tip {
-     background-color: #d9d9d9;
-  
- }
+}
+
+.BienEtre_popup .leaflet-popup-content-wrapper,
+.BienEtre_popup .leaflet-popup-tip {
+  background-color: #fccde5;
+
+}
+
+.EquipementMaison_popup .leaflet-popup-content-wrapper,
+.EquipementMaison_popup .leaflet-popup-tip {
+  background-color: #8dd3c7;
+
+}
+
+.Textile_popup .leaflet-popup-content-wrapper,
+.Textile_popup .leaflet-popup-tip {
+  background-color: #80b1d3;
+}
+
+.Don_popup .leaflet-popup-content-wrapper,
+.Don_popup .leaflet-popup-tip {
+  background-color: #ffffb3;
+
+}
+
+.Activite_popup .leaflet-popup-content-wrapper,
+.Activite_popup .leaflet-popup-tip {
+  background-color: #bebada;
+
+}
+
+.Restauration_popup .leaflet-popup-content-wrapper,
+.Restauration_popup .leaflet-popup-tip {
+  background-color: #fdb462;
+
+}
+
+.Dechet_popup .leaflet-popup-content-wrapper,
+.Dechet_popup .leaflet-popup-tip {
+  background-color: #b3de69;
+
+}
+
+.Reparation_popup .leaflet-popup-content-wrapper,
+.Reparation_popup .leaflet-popup-tip {
+  background-color: #d9d9d9;
+
+}
 
 
- 
+
 .u-section-1 .u-layout-wrap-1 {
   margin-top: 60px;
   margin-bottom: 0;
@@ -290,7 +228,7 @@ label::before {
 }
 
 @media (max-width: 1199px) {
-   .u-section-1 {
+  .u-section-1 {
     min-height: 706px;
   }
 
@@ -313,7 +251,7 @@ label::before {
 }
 
 @media (max-width: 991px) {
-   .u-section-1 {
+  .u-section-1 {
     min-height: 736px;
   }
 
@@ -349,7 +287,8 @@ label::before {
   .u-section-1 .u-form-1 {
     margin-right: 108px;
   }
-}.u-section-2 .u-sheet-1 {
-  min-height: 544px;
 }
 
+.u-section-2 .u-sheet-1 {
+  min-height: 544px;
+}
