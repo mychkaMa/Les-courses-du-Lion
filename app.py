@@ -14,14 +14,21 @@ import geopandas as gpd
 from shapely.geometry import Point
 #import pygeos
 from tabulate import tabulate
+import logging
+
 
 app = Flask(__name__)
 
+# Configuring logging
+logging.basicConfig(filename='app.log', level=logging.DEBUG)
+f = open("app.log", "a")
+f.truncate()
+f.close()
 
 @app.route('/')
 def index():
 
-    connection = psycopg2.connect(database="mychka", user="postgres", password="mychka", host="localhost", port=5432)
+    connection = psycopg2.connect(database="mychka", user="postgres", password="mychka", host="localhost", port=5432) #todo variabilisé ?
 
     cursor = connection.cursor()
 
@@ -53,11 +60,7 @@ def receive_data():
     return jsonify({'message': 'Données reçues avec succès'})
 
 
-##### testfrom flask import Flask, request
-import logging
 
-# Configuring logging
-logging.basicConfig(filename='app.log', level=logging.DEBUG)
 
 @app.route('/your-endpoint', methods=['POST'])
 def your_endpoint():
@@ -74,32 +77,59 @@ def your_endpoint():
     return jsonify(response_data)
 
 
-#Récupérer données de la page html indiquée apres le /
-@app.route('/itineraire/<path:path>')
+#Récupérer données de la page html indiquée apres le / # TODO
+@app.route('/itineraire/<path:path>', methods=['GET'])
 def send_file(path):
-    print('1')
-    #arg=path.split("&")
-    print('2')
+
+    logging.debug(f'def send_file : {path}')
+
+
+    arg=path.split("&")
     # recuperation de la position de l'utilisateur    
-    #path_dict=json.loads(arg[0])
-    print('3')
-    #user_position=str(path_dict["lng"])+","+str(path_dict["lat"])
+    path_dict=json.loads(arg[0])
+
+
+    toto = { "lat": 45.756681, "lng": 4.831715 }
+    user_position = str(toto["lng"]) + "," + str(toto["lat"])
+
+   # user_position=str(path_dict["lng"])+","+str(path_dict["lat"])
     
     # Recuperation des categories de courses
-    #cat_course=arg[1].split(',')
+    cat_course=arg[1].split(',')
 
-    user_position="4.831715,45.756681"
-    cat_course='Alimentaire'
 
+    logging.debug(f'user : {cat_course}, {user_position}')
     
 
 ################### Récupère l'isochrone de 10 min à pied auitour de la position de l'utilisateur  ##############
-    url = "http://wxs.ign.fr/calcul/isochrone/isochrone.json?location="+user_position+"&method=Time&graphName=Pieton&exclusions=&time=900&holes=false&smoothing=true"    
-    response = requests.get(url)    
+  #  service_capabilities = "https://wxs.ign.fr/essentiels/geoportail/getcapabilities"
+   # response = requests.get(service_capabilities)    
+    #logging.debug(f'response get cap : {response}')
+
+    service_isochrone = "https://wxs.ign.fr/essentiels/geoportail/isochrone/rest/1.0.0/isochrone?"
+    service_isochrone2 = """https://wxs.ign.fr/calcul/geoportail/itineraire/rest/1.0.0/isochrone?point=2.337306,48.849319&resource=bdtopo-iso&costValue=300&costType=time&profile=car&direction=departure&constraints={"constraintType":"banned","key":"wayType","operator":"=","value":"autoroute"}&distanceUnit=meter&timeUnit=second&crs=EPSG:4326"""
+    service_isochrone3 = """https://wxs.ign.fr/essentiels/geoportail/isochrone/rest/1.0.0/isochrone?point=4.831715,45.756681&resource=bdtopo-iso&costValue=300&costType=time"""
+    response = requests.get(service_isochrone3)    
+
+    resource = "bdtopo-iso",
+    costValue = "300",
+    costType = "time"
+
+    url = str(service_isochrone2) + "point=" + str(user_position) + "&resource=" + str(resource) + "&costValue=" + str(costValue) + "&costType=" + str(costType)
+    logging.debug(f'url : {url}')
+    
+
+
+    #response = requests.get(url)    
+    logging.debug(f'response IGN : {response}')
     dict = response.json()
-    geomWKT=dict['wktGeometry']
-    #geomWKT='POLYGON ((4.857825 45.766805, 4.857183 45.766805, 4.856541 45.766805, 4.852689 45.769942, 4.852689 45.77039, 4.851406 45.770839, 4.850122 45.771735, 4.850122 45.773975, 4.851406 45.774872, 4.852689 45.77532, 4.853331 45.77532, 4.853973 45.774872, 4.853973 45.775768, 4.853973 45.776216, 4.853973 45.776664, 4.855257 45.777112, 4.855257 45.778009, 4.855257 45.778457, 4.853973 45.779353, 4.853973 45.779801, 4.853973 45.780249, 4.854615 45.780249, 4.855257 45.781594, 4.857825 45.782042, 4.857825 45.78249, 4.857825 45.782938, 4.858467 45.782938, 4.859109 45.782938, 4.859751 45.783386, 4.860392 45.783386, 4.861034 45.783386, 4.861676 45.783386, 4.861676 45.782938, 4.861676 45.78249, 4.861676 45.782042, 4.861676 45.781594, 4.86296 45.781594, 4.86296 45.782042, 4.863602 45.782042, 4.863602 45.781594, 4.863602 45.781146, 4.864244 45.781594, 4.864886 45.781594, 4.865528 45.781594, 4.86617 45.780698, 4.86617 45.780249, 4.865528 45.779801, 4.866811 45.779353, 4.867453 45.778905, 4.868095 45.777561, 4.868095 45.777112, 4.870021 45.776664, 4.871305 45.776216, 4.871305 45.775768, 4.871305 45.774424, 4.871305 45.773975, 4.870663 45.773975, 4.871305 45.773527, 4.871305 45.773079, 4.870663 45.773079, 4.870021 45.771735, 4.869379 45.771735, 4.868737 45.77039, 4.867453 45.769494, 4.866811 45.769494, 4.866811 45.769942, 4.864886 45.768598, 4.864244 45.768598, 4.86296 45.767702, 4.862318 45.766357, 4.861034 45.766357, 4.860392 45.76815, 4.859751 45.766357, 4.858467 45.766357, 4.857825 45.766805))'
+    logging.debug(f'dict : {dict}')
+    geomWKT=dict['geometry']
+
+
+    geomWKT='POLYGON ((4.857825 45.766805, 4.857183 45.766805, 4.856541 45.766805, 4.852689 45.769942, 4.852689 45.77039, 4.851406 45.770839, 4.850122 45.771735, 4.850122 45.773975, 4.851406 45.774872, 4.852689 45.77532, 4.853331 45.77532, 4.853973 45.774872, 4.853973 45.775768, 4.853973 45.776216, 4.853973 45.776664, 4.855257 45.777112, 4.855257 45.778009, 4.855257 45.778457, 4.853973 45.779353, 4.853973 45.779801, 4.853973 45.780249, 4.854615 45.780249, 4.855257 45.781594, 4.857825 45.782042, 4.857825 45.78249, 4.857825 45.782938, 4.858467 45.782938, 4.859109 45.782938, 4.859751 45.783386, 4.860392 45.783386, 4.861034 45.783386, 4.861676 45.783386, 4.861676 45.782938, 4.861676 45.78249, 4.861676 45.782042, 4.861676 45.781594, 4.86296 45.781594, 4.86296 45.782042, 4.863602 45.782042, 4.863602 45.781594, 4.863602 45.781146, 4.864244 45.781594, 4.864886 45.781594, 4.865528 45.781594, 4.86617 45.780698, 4.86617 45.780249, 4.865528 45.779801, 4.866811 45.779353, 4.867453 45.778905, 4.868095 45.777561, 4.868095 45.777112, 4.870021 45.776664, 4.871305 45.776216, 4.871305 45.775768, 4.871305 45.774424, 4.871305 45.773975, 4.870663 45.773975, 4.871305 45.773527, 4.871305 45.773079, 4.870663 45.773079, 4.870021 45.771735, 4.869379 45.771735, 4.868737 45.77039, 4.867453 45.769494, 4.866811 45.769494, 4.866811 45.769942, 4.864886 45.768598, 4.864244 45.768598, 4.86296 45.767702, 4.862318 45.766357, 4.861034 45.766357, 4.860392 45.76815, 4.859751 45.766357, 4.858467 45.766357, 4.857825 45.766805))'
     #print(geomWKT)
+    #geom = str(geomWKT['coordinates'])
     # Convert to a shapely.geometry.polygon.Polygon objects
     g1 = shapely.wkt.loads(geomWKT)
 
@@ -143,7 +173,7 @@ def send_file(path):
         request="""SELECT json_build_object('type', 'FeatureCollection','features', json_agg(ST_AsGeoJSON( t.*)::json )) as geojson 
         from (eco_circulaire
         inner JOIN association
-            ON eco_circulaire.gid=association.gid
+            ON eco_circulaire.id=association.gid
         inner JOIN sous_categ
             ON association.id_sous_categ=sous_categ.id_sous_categ
         inner JOIN categ
@@ -169,13 +199,15 @@ def send_file(path):
     
     # calcul du score minimum
     # le score minimum doit augmenter avec le nb de catégories cochées
-    categs=gdf_tout_com.groupby('nom_categ_esp').nom_sous_categ.nunique()
+    categs=gdf_tout_com.groupby('nom_categ').nom_sous_categ.nunique()
 
     score_minimum=0
     bulle_trouvee=False
 
     for cat in cat_course:
-        score_minimum=score_minimum+categs.loc[cat]
+        #score_minimum=score_minimum+categs.loc[cat]
+        score_minimum=7
+
 
     # il faut au moins que 75% des sous_categories des catgéroies choisies soient prése,tent dans la bulle
     score_minimum= int(score_minimum * 0.75)

@@ -344,28 +344,6 @@ affiche_commerces(data)
 
 async function recherche_bulle(user_position) {
 
-    // Sending data to Flask server
-    console.log("Sending data:", data);
-
-    fetch('/your-endpoint', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-    })
-        .then(response => response.json())
-        .then(data => {
-            // Logging the response from Flask server
-            console.log("Response from server:", data);
-        })
-        .catch(error => {
-            console.error('Error:', error);
-        });
-}
-
-/*
-
     if (liste_course.length > 0) {
         if (bounds_gd_lyon.contains([[user_position.lat, user_position.lng]]) == true) {
 
@@ -375,8 +353,9 @@ async function recherche_bulle(user_position) {
                 map.removeLayer(layer)
             });
 
+            //var data_fetch = await fetchAsync("/itineraire/" + liste_course.toString())
             var data_fetch = await fetchAsync("/itineraire/" + JSON.stringify(user_position) + "&" + liste_course.toString())
-            //console.log(data_fetch);
+            //console.log(data_fetch); 
 
             if (data_fetch['message'] == 'pas de bulle') {
                 alert("Notre service ne trouve pas de bulle pour votre recherche...");
@@ -400,7 +379,7 @@ async function recherche_bulle(user_position) {
     }
 }
 
-*/
+
 document.getElementById('find_bulle').addEventListener("click", function () {
     if (user_position == '') {
         // recupere la position de l'utilisateur
