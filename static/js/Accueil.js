@@ -125,11 +125,17 @@ function getColors(nom_categ) {
 }
 
 
+
+async function getCategories() {
+    var categories = await fetchAsync("/categories/")
+    return categories
+}
+
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////// Afficher les commerces sur la carte//////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
-function affiche_commerces(data) {
+function show_commerces(data) {
 
     // Ajout d'évènements : zoom + buffer + couleur
     function mouse_events(feature, leaflet_object) {
@@ -158,6 +164,7 @@ function affiche_commerces(data) {
     // Ajout du geoJSON
 
     var categs = ['Activite', 'Alimentaire', 'Bien etre', 'Dechet', 'Don', 'Equipement Maison', 'Reparation', 'Restauration', 'Textile'];
+    var categories = getCategories()
 
 
     // Ajout des points, une couche par categorie de commerce
@@ -335,7 +342,7 @@ checkboxes.forEach(function (checkbox) {
 data = JSON.parse(document.getElementById("getdata").dataset.markers);
 data = data[0][0]
 
-affiche_commerces(data)
+show_commerces(data)
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -362,11 +369,21 @@ async function recherche_bulle(user_position) {
             }
             if (data_fetch['message'] == 'fund') {
                 // supprime les couches existantes
+                // Supprime toutes les couches de la carte
+                map.eachLayer(function(layer) {
+                    map.removeLayer(layer);
+                });
 
                 osm.addTo(map);
                 affiche_isochrone(JSON.parse(data_fetch['isochrone']));
-                affiche_bulle(JSON.parse(data_fetch['bulle']));
-                affiche_itineraire(JSON.parse(data_fetch['itineraire']));
+                //affiche_bulle(JSON.parse(data_fetch['bulle']));
+                //affiche_itineraire(JSON.parse(data_fetch['itineraire']));
+
+                data = data_fetch['markers'];
+                data=data[0][0]
+                show_commerces(data)
+           //     var commerces = L.geoJSON(data)
+         //       commerces.addTo(map)
 
             }
         }

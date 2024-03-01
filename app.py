@@ -28,26 +28,46 @@ f.truncate()
 f.close()
 
 
-
-def get_all_data():
+def send_request(query):
     connection = psycopg2.connect(database="mychka", user="postgres", password="mychka", host="localhost", port=5432)
     cursor = connection.cursor()
-    cursor.execute("""select json_build_object('type', 'FeatureCollection','features', json_agg(ST_AsGeoJSON( t.*)::json )) as geojson 
+    cursor.execute(query)
+    
+    return cursor
+
+def query_all_markets():
+    query = """
+    select json_build_object ('type', 'FeatureCollection','features', json_agg(ST_AsGeoJSON( t.*)::json )) as geojson 
     from (eco_circulaire
     inner JOIN association
         ON eco_circulaire.id=association.gid
     inner JOIN sous_categ
         ON association.id_sous_categ=sous_categ.id_sous_categ
     inner JOIN categ
-        ON sous_categ.id_categ=categ.id_categ ) as t""")
-    
-    return cursor
+        ON sous_categ.id_categ=categ.id_categ ) as t
+    """
+    # Retourner la requête SQL construite
+    return query
+
+def query_data(cat_course, isochrone, radius):
+    query = query_all_markets()
+
+    where_category = "WHERE t.nom_categ IN (" + ", ".join([f"'{cat}'" for cat in cat_course]) + ") "
+    where_isochrone = f"""AND ST_Within(t.geom, ST_GeomFromGeoJSON('{isochrone}')) """
+    where_isochrone1 = f"""AND ST_Intersects(
+            ST_Buffer(ST_ForceRHR(ST_Boundary(ST_GeomFromText('{isochrone}', 4326))), {radius}, 'side=left'),
+            t.geom) = TRUE """
+    where_valid = "AND ST_IsValid(t.geom);"
+
+    #print("query_________________________________", query + where_category + where_isochrone + where_valid)
+    return query + where_category + where_isochrone + where_valid
 
     
 @app.route('/')
 def index():
-    cursor = get_all_data()
-    markers=cursor.fetchall()
+    query = query_all_markets()
+    cursor = send_request(query)
+    markers = cursor.fetchall()
 
     #cursor.execute("""select distinct classe from eco_circulaire order by classe asc""")
     #classes=[c for c, in cursor.fetchall()]
@@ -56,6 +76,13 @@ def index():
     categs=[c for c, in cursor.fetchall()]
 
     return render_template("Accueil.html", markers=markers,categs=categs)
+
+def get_all_markets():
+    query = query_all_markets()
+    cursor = send_request(query)
+    all_markets = cursor.fetchall()
+
+    return all_markets
 
 
 # Récupération des paramètres de la requête
@@ -71,20 +98,31 @@ def getParams(path):
 
     return user_position, cat_course
 
+def build_isochrone_url(user_position):
+    base_url = "https://wxs.ign.fr/essentiels/geoportail/isochrone/rest/1.0.0/isochrone?"
+    params = {
+        "point": user_position,
+        "resource": "bdtopo-iso",
+        "costValue": "900",
+        "costType": "time",
+        "timeUnit" : "second",
+        "profile": "pedestrian",
+        "crs" : "EPSG:4326" 
+    }
+    # Join parameters using '&'
+    url_params = "&".join(f"{key}={value}" for key, value in params.items())
+    return base_url + url_params
 
 # Récupère l'isochrone de 10 min à pied à partir de la position de l'utilisateur
 def isochrone_service(user_position):
-    service_ign = """https://wxs.ign.fr/essentiels/geoportail/isochrone/rest/1.0.0/isochrone?"""
-    resource = "bdtopo-iso"
-    costValue = "300"
-    costType = "time"
-    timeUnit = "second"
-    profile = "pedestrian"
-    crs = "EPSG:4326" 
-
-    url = service_ign + "point=" + user_position + "&resource=" + resource + "&costValue=" + costValue + "&costType=" + costType + "&profile=" + profile
-    response = requests.get(url)
-    return response
+    url = build_isochrone_url(user_position)
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Raises HTTPError if request was not successful
+        return response.json()
+    except requests.RequestException as e:
+        logging.error(f'La requête IGN isochrone a échoué : {e}')
+        raise  # Propagate the exception to the caller
 
 
 def format_geojson(geom):
@@ -105,7 +143,7 @@ def format_geojson(geom):
 
 
 # Récupération des commerces dans l'isochrone filtré par catégorie
-def build_request(cat_course, isochrone_wkt, radius):
+def build_request1(cat_course, isochrone_wkt, radius):
     request="""SELECT json_build_object('type', 'FeatureCollection','features', json_agg(ST_AsGeoJSON( t.*)::json )) as geojson 
     from (eco_circulaire
     inner JOIN association
@@ -133,30 +171,58 @@ def build_request(cat_course, isochrone_wkt, radius):
     return request
 
 
+# Récupération des catégories
+#@app.route('/categories/', methods=['GET'])
+def get_categories():
+    query = """select distinct nom_categ from categ order by nom_categ asc"""
+    cursor = send_request(query)
+    categories = cursor.fetchall()
+    categories = [c for c, in categories]
+    return categories
+
+
 #Récupérer données de la page html indiquée apres le /
 @app.route('/itineraire/<path:path>', methods=['GET'])
 def send_file(path):
 
+    # Récupération des paramètres de l'url
     user_position, cat_course = getParams(path)
-    logging.debug(f'user position : {user_position}, catégories : {cat_course}, ')
 
+    # Récupération de l'isochrone de 15 min à partir de la position de l'utilisateur
     response = isochrone_service(user_position)
-    if response.status_code != 200:
-        logging.debug(f'La requête IGN isochrone a échoué : {response}')
-        sys.exit(1)
-   
-    response_json = response.json()
-    geom = response_json['geometry']
-    isochrone_geojson, isochrone_wkt = format_geojson(geom)
 
-    # Récupération du geojson des commerces
-    cursor = get_all_data()
+    # Conversion en geojson de qualitey
+    isochrone_geojson = response['geometry']
+    isochrone_geojson_feature, isochrone_wkt = format_geojson(isochrone_geojson)
+   
+    isochrone = str(isochrone_geojson)
+    isochrone = isochrone.replace("'", '"')
+
+    # Récupération des commerces dans l'isochrone
+    radius = 0
+    query = query_data(cat_course, isochrone, radius)
+    cursor = send_request(query)
+    markers = cursor.fetchall() 
+
+
+
+    if isochrone_geojson_feature:
+        response = {
+            'itineraire': '', 
+            'isochrone': isochrone_geojson_feature, 
+            'bulle': '', 
+            'commerces_bulle': '', 
+            'message': 'fund',
+            'markers': markers
+            }
+        return response
+
+
+    # Récupération du geojson des commerces ?
+    cursor = query_all_markets()
     poi_eco_circ=[c for c, in cursor.fetchall()]
     gdf_eco_circ= gpd.GeoDataFrame.from_features(poi_eco_circ[0]["features"])
     gdf_eco_circ.crs = "epsg:4326"
-
-
-
 
     ################## recupere les commerces dans l isochrone filtré par catégorie #########################
 
@@ -164,20 +230,19 @@ def send_file(path):
     radius = 0
     # Nombre de commerces dans l'isochrone
     nb_com = 0
-    request = build_request(cat_course, isochrone_wkt, radius)
+    request = query_data(cat_course, isochrone_wkt, radius)
     score_max = 0
     iteration = 0
     
     # calcul du score minimum
     # le score minimum doit augmenter avec le nb de catégories cochées
     categs=gdf_eco_circ.groupby('nom_categ').nom_sous_categ.nunique()
-
-    score_minimum=0
+    #score_minimum=0
     bulle_trouvee=False
-
-    for cat in cat_course:
+    score_minimum = len(cat_course)
+    #for cat in cat_course:
         #score_minimum=score_minimum+categs.loc[cat]
-        score_minimum=7
+        #score_minimum=7
 
 
     # il faut au moins que 75% des sous_categories des catgéroies choisies soient prése,tent dans la bulle
@@ -188,7 +253,7 @@ def send_file(path):
     while bulle_trouvee==False and iteration <11:
     
         #Augmentation du beffer
-        cursor.execute(build_request(cat_course, isochrone_wkt, radius))
+        cursor.execute(query_data(cat_course, isochrone_wkt, radius))
         radius=radius+0.0049
         #récupération du json
         poi_eco_circ=[c for c, in cursor.fetchall()]
@@ -298,7 +363,7 @@ def send_file(path):
     # conversion en string
     itineraire = json.dumps(response_json)
 
-    response={'itineraire':itineraire, 'isochrone': isochrone_geojson, 'bulle': bulle, 'commerces_bulle':commerces_bulle, 'message': 'fund'} 
+    response={'itineraire':itineraire, 'isochrone': isochrone_geojson_feature, 'bulle': bulle, 'commerces_bulle':commerces_bulle, 'message': 'fund'} 
      
     return response
 
