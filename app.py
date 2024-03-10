@@ -49,7 +49,7 @@ def query_all_markets():
     # Retourner la requête SQL construite
     return query
 
-def query_data(cat_course, isochrone, radius):
+def query_data_isochrone_filtered(cat_course, isochrone, radius):
     query = query_all_markets()
 
     where_category = "WHERE t.nom_categ IN (" + ", ".join([f"'{cat}'" for cat in cat_course]) + ") "
@@ -61,6 +61,20 @@ def query_data(cat_course, isochrone, radius):
 
     #print("query_________________________________", query + where_category + where_isochrone + where_valid)
     return query + where_category + where_isochrone + where_valid
+
+
+def query_data_isochrone(isochrone, radius):
+    query = query_all_markets()
+
+    #where_category = "WHERE t.nom_categ IN (" + ", ".join([f"'{cat}'" for cat in cat_course]) + ") "
+    where_isochrone = f"""WHERE ST_Within(t.geom, ST_GeomFromGeoJSON('{isochrone}')) """
+    where_isochrone1 = f"""AND ST_Intersects(
+            ST_Buffer(ST_ForceRHR(ST_Boundary(ST_GeomFromText('{isochrone}', 4326))), {radius}, 'side=left'),
+            t.geom) = TRUE """
+    where_valid = "AND ST_IsValid(t.geom);"
+
+    #print("query_________________________________", query + where_category + where_isochrone + where_valid)
+    return query + where_isochrone + where_valid
 
     
 @app.route('/')
@@ -96,6 +110,7 @@ def getParams(path):
     # Récupération des categories de courses
     cat_course=args[1].split(',')
 
+    logging.debug(f'user_position : {user_position}, cat_course : {cat_course}')
     return user_position, cat_course
 
 def build_isochrone_url(user_position):
@@ -200,7 +215,8 @@ def send_file(path):
 
     # Récupération des commerces dans l'isochrone
     radius = 0
-    query = query_data(cat_course, isochrone, radius)
+    #query = query_data_isochrone_filtered(cat_course, isochrone, radius)
+    query = query_data_isochrone(isochrone, radius)
     cursor = send_request(query)
     markers = cursor.fetchall() 
 
@@ -230,7 +246,7 @@ def send_file(path):
     radius = 0
     # Nombre de commerces dans l'isochrone
     nb_com = 0
-    request = query_data(cat_course, isochrone_wkt, radius)
+    request = query_data_isochrone_filtered(cat_course, isochrone_wkt, radius)
     score_max = 0
     iteration = 0
     
@@ -253,7 +269,7 @@ def send_file(path):
     while bulle_trouvee==False and iteration <11:
     
         #Augmentation du beffer
-        cursor.execute(query_data(cat_course, isochrone_wkt, radius))
+        cursor.execute(query_data_isochrone_filtered(cat_course, isochrone_wkt, radius))
         radius=radius+0.0049
         #récupération du json
         poi_eco_circ=[c for c, in cursor.fetchall()]

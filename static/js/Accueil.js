@@ -1,6 +1,35 @@
-//var user_position ='';
+/**
+ * Variables globales
+ */
+var userLocation; // = { lat: 45.756681, lng: 4.831715 };
+var userLocationMarker;
 
-var user_position = { lat: 45.756681, lng: 4.831715 };
+var liste_course = []; // 'Activite,Alimentaire,Bien,Dechet,Don,Equipement,Reparation,Restauration'
+
+
+function setUserLocation(lat, lng) {
+    // MAJ des coordonnées
+    userLocation = {
+        lat: lat,
+        lng: lng
+    };
+
+    // Mettre à jour le contenu de la balise HTML avec les nouvelles coordonnées
+    document.getElementById('userCoords').innerHTML = `Latitude: ${lat} <br /> Longitude: ${lng}`;
+
+    // MAJ du marker
+    // Vérifier si un marqueur existe déjà
+    if (userLocationMarker) {
+        // Supprimer le marqueur existant de la carte
+        map.removeLayer(userLocationMarker);
+    }
+    // Créer un nouveau marqueur et l'ajouter à la carte
+    userLocationMarker = L.marker([userLocation.lat, userLocation.lng]).addTo(map);
+
+    map.setView([userLocation.lat, userLocation.lng], 15);
+}
+
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////// fonction pour debuguer: liste tous les arguments d'un objet javascript /////////////////////////
@@ -293,37 +322,13 @@ function affiche_isochrone(data_iso) {
 
 
 
-/////////////////////////////////////////////////////////////////////////////////
-///////////////////////////// Connaitre votre adresse ///////////////////////////
-/////////////////////////////////////////////////////////////////////////////////
 
-var geocoderBAN = L.geocoderBAN({
-    collapsed: false,
-    style: 'searchBar',
-    resultsNumber: 5,
-    placeholder: 'Entrez votre adresse'
-}).addTo(map)
-
-
-geocoderBAN.markGeocode = function (feature) {
-    var latlng = [feature.geometry.coordinates[1], feature.geometry.coordinates[0]]
-    map.setView(latlng, 14)
-    user_position = { lat: latlng[0], lng: latlng[1] };
-
-    var popup = L.popup()
-        .setLatLng(latlng)
-        .setContent(feature.properties.label)
-        .openOn(map)
-}
 
 /////////////////////////////////////////////////////////////////////////////////
 ///////////// chopix du type de courses ////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
 var checkboxes = document.querySelectorAll("#choix_commerce");
-//var liste_course = []
-
-var liste_course = 'Activite,Alimentaire,Bien,Dechet,Don,Equipement,Reparation,Restauration'
 
 // Use Array.forEach to add an event listener to each checkbox.
 checkboxes.forEach(function (checkbox) {
@@ -336,90 +341,153 @@ checkboxes.forEach(function (checkbox) {
     })
 });
 
-/////////////////////////////////////////////////////////////////////////////////
-///////////// Chargement des tous les commerces au 1er chargement////////////////
-/////////////////////////////////////////////////////////////////////////////////
-data = JSON.parse(document.getElementById("getdata").dataset.markers);
-data = data[0][0]
 
-show_commerces(data)
 
 
 /////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// creation de la bulle ///////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
-async function recherche_bulle(user_position) {
+async function recherche_bulle(userLocation) {
 
-    if (liste_course.length > 0) {
-        if (bounds_gd_lyon.contains([[user_position.lat, user_position.lng]]) == true) {
+    // calcul de la bulle
+    //suppression des anciennes bulles
+    drawn_layer.eachLayer(function (layer) {
+        map.removeLayer(layer)
+    });
 
-            // calcul de la bulle
-            //suppression des anciennes bulles
-            drawn_layer.eachLayer(function (layer) {
-                map.removeLayer(layer)
-            });
+    var data_fetch = await fetchAsync("/itineraire/" + JSON.stringify(userLocation) + "&" + liste_course.toString())
+    //console.log(data_fetch); 
 
-            //var data_fetch = await fetchAsync("/itineraire/" + liste_course.toString())
-            var data_fetch = await fetchAsync("/itineraire/" + JSON.stringify(user_position) + "&" + liste_course.toString())
-            //console.log(data_fetch); 
-
-            if (data_fetch['message'] == 'pas de bulle') {
-                alert("Notre service ne trouve pas de bulle pour votre recherche...");
-            }
-            if (data_fetch['message'] == 'fund') {
-                // supprime les couches existantes
-                // Supprime toutes les couches de la carte
-                map.eachLayer(function(layer) {
-                    map.removeLayer(layer);
-                });
-
-                osm.addTo(map);
-                affiche_isochrone(JSON.parse(data_fetch['isochrone']));
-                //affiche_bulle(JSON.parse(data_fetch['bulle']));
-                //affiche_itineraire(JSON.parse(data_fetch['itineraire']));
-
-                data = data_fetch['markers'];
-                data=data[0][0]
-                show_commerces(data)
-           //     var commerces = L.geoJSON(data)
-         //       commerces.addTo(map)
-
-            }
-        }
-        else {
-            alert("vous êtes trop loin des commerces...");
-        }
+    if (data_fetch['message'] == 'pas de bulle') {
+        alert("Notre service ne trouve pas de bulle pour votre recherche...");
     }
-    else {
-        alert("vous devez choisir un type de courses avant de calculer un itinéraire ...");
+    if (data_fetch['message'] == 'fund') {
+        // supprime les couches existantes
+        // Supprime toutes les couches de la carte
+        map.eachLayer(function (layer) {
+            map.removeLayer(layer);
+        });
+
+        osm.addTo(map);
+        affiche_isochrone(JSON.parse(data_fetch['isochrone']));
+        //affiche_bulle(JSON.parse(data_fetch['bulle']));
+        //affiche_itineraire(JSON.parse(data_fetch['itineraire']));
+
+        data = data_fetch['markers'];
+        data = data[0][0]
+        show_commerces(data)
+        //     var commerces = L.geoJSON(data)
+        //       commerces.addTo(map)
+
     }
+
 }
 
 
 document.getElementById('find_bulle').addEventListener("click", function () {
-    if (user_position == '') {
-        // recupere la position de l'utilisateur
-        map.locate({ setView: true, watch: false, maxZoom: 14 })
-
-            .on('locationfound', async function (e) {
-                user_position = e.latlng
-                var popupup = L.popup()
-                    .setLatLng(e.latlng)
-                    .setContent("Votre position")
-                    .openOn(map)
-
-                recherche_bulle(user_position, bounds_gd_lyon)
-            })
-
-
-            .on('locationerror', function (e) {
-                alert("Où êtes vous?? Le service ne connait pas votre point de départ. Renseigner une adresse ou autoriser la geolocalisation dans votre navigateur ");
-            })
+    if (!userLocation) {
+        alert("Veuillez choisir une localisation");
     }
-    else {
-        recherche_bulle(user_position, bounds_gd_lyon)
+    var isUserLocation = checkUserLocation(userLocation.lat, userLocation.lng);
+    var isCategories = checkCategories(liste_course);
+
+    if (isUserLocation && isCategories) {
+        recherche_bulle(userLocation, bounds_gd_lyon)
     }
 }, false);
 
+/////////////////////////////////////////////////////////////////////////////////
+///////////// Chargement des tous les commerces au 1er chargement////////////////
+/////////////////////////////////////////////////////////////////////////////////
+data = JSON.parse(document.getElementById("getdata").dataset.markers);
+data = data[0][0]
+show_commerces(data)
 
+
+
+
+
+
+/////////////////////////////////////////////////////////////////////////////////
+////////////////// Récupération de la localisation utilisateur //////////////////
+/////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Créer une localisation aléatoire dans Lyon
+ */
+document.getElementById('randomLocation').addEventListener("click", function () {
+    var minLat = 45.71;
+    var maxLat = 45.80;
+    var minLng = 4.78;
+    var maxLng = 4.89;
+
+    // Générer un nombre décimal aléatoire compris entre min (inclus) et max (exclus)
+    var lat = Math.random() * (maxLat - minLat) + minLat;
+    var lng = Math.random() * (maxLng - minLng) + minLng;
+
+    setUserLocation(lat, lng);
+}, false);
+
+
+/**
+ * Créer une localisation à partir d'un clic sur la carte
+ */
+function onMapClick(e) {
+    setUserLocation(e.latlng.lat, e.latlng.lng);
+}
+map.on('click', onMapClick);
+
+
+/**
+ * Géocoder l'adresse de l'utilisateur
+ */
+var geocoderBAN = L.geocoderBAN({
+    collapsed: false,
+    style: 'searchBar',
+    resultsNumber: 5,
+    placeholder: 'Entrez votre adresse'
+}).addTo(map)
+
+geocoderBAN.markGeocode = function (feature) {
+    setUserLocation(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+    // var popup = L.popup()
+    //     .setLatLng(latlng)
+    //     .setContent(feature.properties.label)
+    //     .openOn(map)
+}
+
+
+/**
+ * Récupérer la position de l'utilisateur
+ */
+document.getElementById('webLocation').addEventListener("click", function () {
+    // recupere la position de l'utilisateur
+    map.locate({ setView: true, watch: false, maxZoom: 14 })
+        .on('locationfound', async function (e) {
+            await setUserLocation(e.latlng.lat, e.latlng.lng);
+        })
+        .on('locationerror', function (e) {
+            alert("Où êtes vous?? Le service ne connait pas votre point de départ. Renseigner une adresse ou autoriser la geolocalisation dans votre navigateur ");
+        })
+})
+
+
+function checkUserLocation(lat, lng) {
+    if (!bounds_gd_lyon.contains([[lat, lng]])) {
+        alert("Vous êtes trop loin des commerces...");
+        return false
+    }
+    return true;
+}
+
+
+function checkCategories(listCategories) {
+    if (listCategories.length > 0) {
+        return true;
+    }
+    else {
+        alert("Vous devez choisir un type de courses avant de calculer un itinéraire ...");
+        return false;
+    }
+}

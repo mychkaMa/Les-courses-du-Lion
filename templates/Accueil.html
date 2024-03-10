@@ -82,8 +82,28 @@
       
   <div class="row">
 
-    <!-- Liste des catégories -->
+    
     <div class="column">
+
+      <!-- Comment se localiser ? -->
+      Une localisation est requise pour trouver une bulle de commerce.<br />
+      Plusieurs possibilités s'offrent à vous :
+      <ul>
+        <li>Autoriser le naviguateur à accéder à votre position</li>
+        <button id="webLocation" class="upgrade-btn">Web localisation</button>
+        <li>Entrer votre adresse dans la barre de recherche</li>
+        <li>Cliquer mnauellement sur la carte</li>
+        <li>Générer une adresse aléatoire</li>
+        <button id="randomLocation" class="upgrade-btn">Localisation aléatoire</button>
+      </ul>
+
+      <div id="userLocationDisplay">
+        Votre position : <br />
+        <span id="userCoords"></span>
+      </div>
+
+
+      <!-- Liste des catégories -->
       <div id="course">
         <b>Choisissez un ou plusieurs type(s) de courses :</b>
       </div>
