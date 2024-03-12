@@ -108,6 +108,7 @@
         <b>Choisissez un ou plusieurs type(s) de courses :</b>
       </div>
       <div id="filtre_course">
+        <!-- Récupération des données de postgres -->
         {% for nom_categ in categs %}
         <input type="checkbox" id="choix_commerce_{{ nom_categ }}" name="settings" value="{{ nom_categ }}">
         <label for="choix_commerce_{{ nom_categ }}" data-content="{{ nom_categ }}">{{ nom_categ }}</label>

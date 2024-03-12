@@ -35,6 +35,7 @@ def send_request(query):
     
     return cursor
 
+
 def query_all_markets():
     query = """
     select json_build_object ('type', 'FeatureCollection','features', json_agg(ST_AsGeoJSON( t.*)::json )) as geojson 
@@ -76,27 +77,24 @@ def query_data_isochrone(isochrone, radius):
     #print("query_________________________________", query + where_category + where_isochrone + where_valid)
     return query + where_isochrone + where_valid
 
-    
+def query_categories():
+    query = """select distinct nom_categ from categ order by nom_categ asc"""
+    # Retourner la requête SQL construite
+    return query
+
 @app.route('/')
 def index():
+    # Markets
     query = query_all_markets()
     cursor = send_request(query)
     markers = cursor.fetchall()
 
-    #cursor.execute("""select distinct classe from eco_circulaire order by classe asc""")
-    #classes=[c for c, in cursor.fetchall()]
-
-    cursor.execute("""select distinct nom_categ from categ order by nom_categ asc""")
-    categs=[c for c, in cursor.fetchall()]
-
-    return render_template("Accueil.html", markers=markers,categs=categs)
-
-def get_all_markets():
-    query = query_all_markets()
+    # Categories
+    query = query_categories()
     cursor = send_request(query)
-    all_markets = cursor.fetchall()
+    categories = [c for c, in cursor.fetchall()]
 
-    return all_markets
+    return render_template("Accueil.html", markers=markers,categs=categories)
 
 
 # Récupération des paramètres de la requête

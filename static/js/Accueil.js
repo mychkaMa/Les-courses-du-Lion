@@ -155,11 +155,6 @@ function getColors(nom_categ) {
 
 
 
-async function getCategories() {
-    var categories = await fetchAsync("/categories/")
-    return categories
-}
-
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////// Afficher les commerces sur la carte//////////////////////
 /////////////////////////////////////////////////////////////////////////////////
@@ -192,12 +187,12 @@ function show_commerces(data) {
 
     // Ajout du geoJSON
 
-    var categs = ['Activite', 'Alimentaire', 'Bien etre', 'Dechet', 'Don', 'Equipement Maison', 'Reparation', 'Restauration', 'Textile'];
-    var categories = getCategories()
+    var categories = ['Activite', 'Alimentaire', 'Bien etre', 'Dechet', 'Don', 'Equipement Maison', 'Reparation', 'Restauration', 'Textile'];
+    //const categories = getCategories();
 
 
     // Ajout des points, une couche par categorie de commerce
-    categs.forEach(function (categ) {
+    categories.forEach(function (categ) {
         var commerces = L.geoJson(data, {
             style: function (feature) {
                 return {
@@ -328,7 +323,19 @@ function affiche_isochrone(data_iso) {
 ///////////// chopix du type de courses ////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
-var checkboxes = document.querySelectorAll("#choix_commerce");
+var checkboxes = document.querySelectorAll("[id^='choix_commerce_']");
+//var categories = [];
+//const categories = getCategories();
+
+function getCategories() {
+    const categories = new Set();
+    checkboxes.forEach(function (checkbox) {
+        //categories.push(checkbox.value);
+        categories.add(checkbox.value);
+    })
+    return categories
+}
+
 
 // Use Array.forEach to add an event listener to each checkbox.
 checkboxes.forEach(function (checkbox) {
@@ -337,7 +344,6 @@ checkboxes.forEach(function (checkbox) {
             Array.from(checkboxes) // Convert checkboxes to an array to use filter and map.
                 .filter(i => i.checked) // Use Array.filter to remove unchecked checkboxes.
                 .map(i => i.value) // Use Array.map to extract only the checkbox values from the array of objects.
-        console.log(liste_course.toString())
     })
 });
 
@@ -472,7 +478,12 @@ document.getElementById('webLocation').addEventListener("click", function () {
         })
 })
 
-
+/**
+ * Vérifier si l'utilisateur est localisé dans le GL
+ * @param {*} lat 
+ * @param {*} lng 
+ * @returns 
+ */
 function checkUserLocation(lat, lng) {
     if (!bounds_gd_lyon.contains([[lat, lng]])) {
         alert("Vous êtes trop loin des commerces...");
@@ -482,6 +493,11 @@ function checkUserLocation(lat, lng) {
 }
 
 
+/**
+ * Vérifier si l'utilisateur à cocher des catégories
+ * @param {*} listCategories 
+ * @returns 
+ */
 function checkCategories(listCategories) {
     if (listCategories.length > 0) {
         return true;
