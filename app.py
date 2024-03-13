@@ -82,6 +82,15 @@ def query_categories():
     # Retourner la requête SQL construite
     return query
 
+def query_categoriesAndColors():
+    query = """
+        SELECT json_build_object('nom_categ', nom_categ, 'colors', colors) AS category
+        FROM categ
+        ORDER BY nom_categ ASC;"""
+    # Retourner la requête SQL construite
+    return query
+
+
 @app.route('/')
 def index():
     # Markets
@@ -126,9 +135,21 @@ def build_isochrone_url(user_position):
     url_params = "&".join(f"{key}={value}" for key, value in params.items())
     return base_url + url_params
 
+def build_itineraire_url(user_position):
+    base_url = "https://wxs.ign.fr/calcul/geoportail/itineraire/rest/1.0.0/route?"
+    params = {
+        "resource": "bdtopo-osrm",
+        "start": user_position,
+        "end": "4.846107959747315,45.75104347091443",
+        "profile": "pedestrian",
+        "crs" : "EPSG:4326" 
+    }
+    # Join parameters using '&'
+    url_params = "&".join(f"{key}={value}" for key, value in params.items())
+    return base_url + url_params
+
 # Récupère l'isochrone de 10 min à pied à partir de la position de l'utilisateur
-def isochrone_service(user_position):
-    url = build_isochrone_url(user_position)
+def ign_service(url):
     try:
         response = requests.get(url)
         response.raise_for_status()  # Raises HTTPError if request was not successful
@@ -202,10 +223,11 @@ def send_file(path):
     user_position, cat_course = getParams(path)
 
     # Récupération de l'isochrone de 15 min à partir de la position de l'utilisateur
-    response = isochrone_service(user_position)
+    url_isochrone = build_isochrone_url(user_position)
+    response_itineraire = ign_service(url_isochrone)
 
     # Conversion en geojson de qualitey
-    isochrone_geojson = response['geometry']
+    isochrone_geojson = response_itineraire['geometry']
     isochrone_geojson_feature, isochrone_wkt = format_geojson(isochrone_geojson)
    
     isochrone = str(isochrone_geojson)
@@ -218,11 +240,20 @@ def send_file(path):
     cursor = send_request(query)
     markers = cursor.fetchall() 
 
-
+    # Récupération de l'isochrone de 15 min à partir de la position de l'utilisateur
+    url_itineraire = build_itineraire_url(user_position)
+    response_itineraire = ign_service(url_itineraire)
+    print('_______c moi___',response_itineraire)
+        # Conversion en geojson de qualitey
+    itineraire_geojson = response_itineraire['geometry']
+    #itineraire_geojson_feature, itineraire_wkt = format_geojson(itineraire_geojson)
+   
+    itineraire = str(itineraire_geojson)
+    itineraire = itineraire.replace("'", '"')
 
     if isochrone_geojson_feature:
         response = {
-            'itineraire': '', 
+            'itineraire': response_itineraire, 
             'isochrone': isochrone_geojson_feature, 
             'bulle': '', 
             'commerces_bulle': '', 
@@ -346,8 +377,8 @@ def send_file(path):
 
 
     if iteration >= 10:
-        response ={'message': 'pas de bulle'}
-        return response
+        response_itineraire ={'message': 'pas de bulle'}
+        return response_itineraire
 
 
 
@@ -368,21 +399,32 @@ def send_file(path):
 
 
     #########  itineraire vers le meilleur commerce ##############
-    url = """https://wxs.ign.fr/calcul/geoportail/itineraire/rest/1.0.0/route?resource=bdtopo-pgr&profile=pedestrian&optimization=fastest&start="""+user_position+"&end="+str(centre_bulle.x.values[0])+","+str(centre_bulle.y.values[0])+"""&intermediates=&constraints={"constraintType": "banned","key":"wayType","operator":"=","value":"tunnel"}&geometryFormat=geojson&getSteps=true&getBbox=true&waysAttributes=cleabs&timeUnit=minute"""
+    url_isochrone = """https://wxs.ign.fr/calcul/geoportail/itineraire/rest/1.0.0/route?resource=bdtopo-pgr&profile=pedestrian&optimization=fastest&start="""+user_position+"&end="+str(centre_bulle.x.values[0])+","+str(centre_bulle.y.values[0])+"""&intermediates=&constraints={"constraintType": "banned","key":"wayType","operator":"=","value":"tunnel"}&geometryFormat=geojson&getSteps=true&getBbox=true&waysAttributes=cleabs&timeUnit=minute"""
 
-    response = requests.get(url)    
+    response_itineraire = requests.get(url_isochrone)    
 
     # conversion bytes vers dict     
-    response_json = response.json()
+    response_json = response_itineraire.json()
     # conversion en string
     itineraire = json.dumps(response_json)
 
-    response={'itineraire':itineraire, 'isochrone': isochrone_geojson_feature, 'bulle': bulle, 'commerces_bulle':commerces_bulle, 'message': 'fund'} 
+    response_itineraire={'itineraire':itineraire, 'isochrone': isochrone_geojson_feature, 'bulle': bulle, 'commerces_bulle':commerces_bulle, 'message': 'fund'} 
      
-    return response
+    return response_itineraire
 
 
+@app.route('/categories/', methods=['GET'])
+def get_categories():
+    query = query_categoriesAndColors()
+    cursor = send_request(query)
+    #categories_colors = cursor.fetchall()
 
+    categories_with_colors = [row[0] for row in cursor.fetchall()]
+
+    # Convertir la liste de tuples en JSON
+    categories_with_colors_json = json.dumps(categories_with_colors)
+
+    return categories_with_colors_json
 
 @app.route('/Qui-sommes-nous')
 def qui_sommes_nous():
@@ -403,3 +445,6 @@ def login():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+
+    #cur?close adn conn.close

@@ -5,6 +5,39 @@ var userLocation; // = { lat: 45.756681, lng: 4.831715 };
 var userLocationMarker;
 
 var liste_course = []; // 'Activite,Alimentaire,Bien,Dechet,Don,Equipement,Reparation,Restauration'
+var categories;
+
+
+
+
+window.onload = function() {
+    resetCheckboxes();
+};
+
+
+initialize();
+
+function initialize() {
+    categories = getCategoriesColors()
+        .then(categories => {
+            console.log('Valeur récupérée :', categories);
+
+            // Utilisez ici les données récupérées
+        })
+        .catch(error => {
+            console.error('Une erreur s\'est produite :', error);
+        });
+
+    // // Maintenant, vous pouvez utiliser forEach()
+    // categories.forEach(category => {
+    //     console.log(category.nom_categ, category.colors);
+    //     // Faites ce que vous devez faire avec chaque catégorie ici
+    // });
+
+}
+
+
+
 
 
 function setUserLocation(lat, lng) {
@@ -18,9 +51,7 @@ function setUserLocation(lat, lng) {
     document.getElementById('userCoords').innerHTML = `Latitude: ${lat} <br /> Longitude: ${lng}`;
 
     // MAJ du marker
-    // Vérifier si un marqueur existe déjà
     if (userLocationMarker) {
-        // Supprimer le marqueur existant de la carte
         map.removeLayer(userLocationMarker);
     }
     // Créer un nouveau marqueur et l'ajouter à la carte
@@ -53,12 +84,9 @@ function listerToutesLesProprietes(o) {
 /////////////////////////////////////////////////////////////////////////////////
 
 async function fetchAsync(url) {
-    console.log('fetchAsync1', url);
     try {
         let response = await fetch(url);
-        console.log('fetchAsync2', response);
         let data = await response.json();
-        console.log('fetchAsync3', data);
         return data;
     } catch (error) {
         console.error('Erreur lors de la récupération des données:', error);
@@ -110,7 +138,20 @@ var scale = L.control.scale(
 
 // Définition du style en fonction du type de commerce
 function getColors(nom_categ) {
-    if (nom_categ === "Dechet") {
+
+    // categoriesTest.forEach((t) => {
+    //     if (nom_categ === t.nom_categ) {
+    //         return {
+    //             fillColor: "#b3de69",
+    //         };
+    //     } else {
+    //         return {
+    //             fillColor: "#0099CC"
+    //         };
+    //     }
+    // })
+
+    if (nom_categ === "Déchet") {
         return {
             fillColor: "#b3de69",
         };
@@ -126,7 +167,7 @@ function getColors(nom_categ) {
         return {
             fillColor: "#bebada",
         };
-    } else if (nom_categ === "Bien etre") {
+    } else if (nom_categ === "Bien-être") {
         return {
             fillColor: "#fccde5",
         };
@@ -142,7 +183,7 @@ function getColors(nom_categ) {
         return {
             fillColor: "#ffffb3",
         };
-    } else if (nom_categ === "Reparation") {
+    } else if (nom_categ === "Réparation") {
         return {
             fillColor: "#d9d9d9",
         };
@@ -184,16 +225,11 @@ function show_commerces(data) {
         });
     }
 
-
-    // Ajout du geoJSON
-
-    var categories = ['Activite', 'Alimentaire', 'Bien etre', 'Dechet', 'Don', 'Equipement Maison', 'Reparation', 'Restauration', 'Textile'];
-    //const categories = getCategories();
-
-
     // Ajout des points, une couche par categorie de commerce
-    categories.forEach(function (categ) {
-        var commerces = L.geoJson(data, {
+    //categories = ['Activite', 'Alimentaire', 'Bien-être', 'Dechet', 'Don', 'Equipement Maison', 'Reparation', 'Restauration', 'Textile'];
+    const categories = getCategories();
+    categories.forEach(function (categorie) {
+        var markets = L.geoJson(data, {
             style: function (feature) {
                 return {
                     radius: 6,
@@ -202,7 +238,6 @@ function show_commerces(data) {
                     fillOpacity: 1
                 }
             },
-
             pointToLayer: function (feature, latlng) {
                 var marker = L.circleMarker(latlng, getColors(feature.properties.nom_categ)).bindPopup(
                     '<styleTitre><p style= "font-weight : bold">' + feature.properties.name + '</p></styleTitre><styleColonne><p style= "font-weight : bold">Catégorie</styleColonne><br><styleText>' + feature.properties.nom_categ + '</styleText><styleColonne><p style= "font-weight : bold">Offre</styleColonne><br><styleText>' + feature.properties.offre_stru + '</styleText><styleColonne><p style= "font-weight : bold">Adresse</styleColonne><br><styleText>' + feature.properties.numvoie + ' ' + feature.properties.voie + ' ' + feature.properties.code_posta + ' ' + feature.properties.commune + '</styleText>',
@@ -210,18 +245,14 @@ function show_commerces(data) {
                 marker.on('click', function (ev) { marker.openPopup(marker.getLatLng()) })
                 return marker
             },
-
             onEachFeature: mouse_events,
-
             filter: function (feature, layer) {
-                return feature.properties.nom_categ == categ;
+                return feature.properties.nom_categ == categorie;
             },
-
         }).addTo(map);
-        // crer un control layer avec titre
 
-        layerControl.addOverlay(commerces, '<i style="background-color:' + getColors(categ).fillColor + '; padding:5px ; border:1px solid black ; border-radius:4px; width: 20px; position: relative;">&nbsp;&nbsp;&nbsp;&nbsp;</i> ' + categ);
-        //console.log(layerControl.getContainer())
+        // Légende
+        layerControl.addOverlay(markets, '<i style="background-color:' + getColors(categorie).fillColor + '; padding:5px ; border:1px solid black ; border-radius:4px; width: 10px; position: relative;">&nbsp;&nbsp;&nbsp;&nbsp;</i> ' + categorie);
     });
 
 }
@@ -280,6 +311,19 @@ function affiche_itineraire(data_iti) {
 }
 
 
+function affiche_itineraire2(itineraire) {
+    // Ajout du geoJSON
+    var isochrone = L.geoJson(itineraire, {
+        style: lineStyle,
+        onEachFeature: function (feature, layer) {
+            var txt = layer.setText(data_iti.duration.toString().substring(0, 2) + ' min', { center: true, offset: 15, attributes: { fill: 'black' } })
+        }
+
+    }).addTo(map);
+    itineraire.setZIndex(1400)
+    drawn_layer.addLayer(itineraire)
+}
+
 
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////// Afficher l isochrone sur la carte //////////////////////////
@@ -298,20 +342,15 @@ function IsoStyle(feature) {
     }
 };
 
-
-
-
 function affiche_isochrone(data_iso) {
     // Ajout du geoJSON
     var isochrone = L.geoJson(data_iso, {
         style: IsoStyle,
         onEachFeature: function (feature, layer) {
-
             var txt = layer.setText('10 min', { offset: 15, attributes: { fill: '#80b1d3', font: 'bold 30px' } })
-
         }
-
     }).addTo(map);
+    layerControl.addOverlay(isochrone, "Isochrone 10m");
     isochrone.setZIndex(1100);
 }
 
@@ -324,8 +363,6 @@ function affiche_isochrone(data_iso) {
 /////////////////////////////////////////////////////////////////////////////////
 
 var checkboxes = document.querySelectorAll("[id^='choix_commerce_']");
-//var categories = [];
-//const categories = getCategories();
 
 function getCategories() {
     const categories = new Set();
@@ -347,6 +384,15 @@ checkboxes.forEach(function (checkbox) {
     })
 });
 
+/**
+ * Décocher toutes les checkboxes au chargement de la page
+ */
+function resetCheckboxes() {
+    checkboxes.forEach(function(checkbox) {
+        checkbox.checked = false;
+    });
+
+}
 
 
 
@@ -370,22 +416,16 @@ async function recherche_bulle(userLocation) {
     }
     if (data_fetch['message'] == 'fund') {
         // supprime les couches existantes
-        // Supprime toutes les couches de la carte
         map.eachLayer(function (layer) {
-            map.removeLayer(layer);
+            console.log('layer',layer)
+            //map.removeLayer(layer);
         });
 
         osm.addTo(map);
         affiche_isochrone(JSON.parse(data_fetch['isochrone']));
         //affiche_bulle(JSON.parse(data_fetch['bulle']));
-        //affiche_itineraire(JSON.parse(data_fetch['itineraire']));
-
-        data = data_fetch['markers'];
-        data = data[0][0]
-        show_commerces(data)
-        //     var commerces = L.geoJSON(data)
-        //       commerces.addTo(map)
-
+        //affiche_itineraire2(JSON.parse(data_fetch['itineraire']));
+        show_commerces(data_fetch['markers'][0][0]);
     }
 
 }
@@ -506,4 +546,13 @@ function checkCategories(listCategories) {
         alert("Vous devez choisir un type de courses avant de calculer un itinéraire ...");
         return false;
     }
+}
+
+
+
+
+async function getCategoriesColors() {
+    var categories = await fetchAsync("/categories/")
+    console.log('categoriiies colors', categories)
+    return categories
 }
