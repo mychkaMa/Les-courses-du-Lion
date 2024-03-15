@@ -109,10 +109,11 @@
         <b>Choisissez un ou plusieurs type(s) de courses :</b>
       </div>
       <div id="filtre_course">
+        <div id="catColors" data-cat-colors="{{ cat_colors }}"></div>
         <!-- Récupération des données de postgres -->
-        {% for nom_categ in categs %}
-        <input type="checkbox" id="choix_commerce_{{ nom_categ }}" name="settings" value="{{ nom_categ }}">
-        <label for="choix_commerce_{{ nom_categ }}" data-content="{{ nom_categ }}">{{ nom_categ }}</label>
+        {% for categorie in categories %}
+        <input type="checkbox" id="choix_commerce_{{ categorie }}" name="settings" value="{{ categorie }}">
+        <label for="choix_commerce_{{ categorie }}" data-content="{{ categorie }}">{{ categorie }}</label>
         <br>
         {% endfor %}
       </div>
@@ -123,6 +124,7 @@
 
     <div class="map-column">
       <!-- Récupération des données de postgres pour les transmettre au JS -->
+      <!-- <div id="getdata" data-markers='{{ markers|tojson }}'></div> -->
       <div id="getdata" data-markers='{{ markers|tojson }}'></div>
       <!-- Carte -->
       <div id="map"></div>

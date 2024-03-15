@@ -21,6 +21,7 @@ from shapely.geometry import shape, mapping
 
 app = Flask(__name__)
 
+
 # Configuring logging
 logging.basicConfig(filename='app.log', level=logging.DEBUG)
 f = open("app.log", "a")
@@ -28,13 +29,77 @@ f.truncate()
 f.close()
 
 
+
+
+# Routes
+
+@app.route('/')
+def index():
+    # Markets
+    query = query_all_markets()
+    cursor = send_request(query)
+    markers = cursor.fetchall()
+
+    # Categories
+    query = query_categories()
+    cursor = send_request(query)
+    categories = [c for c, in cursor.fetchall()]
+
+    # Categories & Colors
+    query = query_categoriesAndColors()
+    cursor = send_request(query)
+    categories_with_colors = [row[0] for row in cursor.fetchall()]
+    categories_with_colors_json = json.dumps(categories_with_colors)
+
+    return render_template("Accueil.html", markers=markers,categories=categories, cat_colors=categories_with_colors_json)
+
+@app.route('/categories/', methods=['GET'])
+def get_categories():
+    query = query_categoriesAndColors()
+    cursor = send_request(query)
+    #categories_colors = cursor.fetchall()
+    categories_with_colors = [row[0] for row in cursor.fetchall()]
+    # Convertir la liste de tuples en JSON
+    categories_with_colors_json = json.dumps(categories_with_colors)
+
+    return categories_with_colors_json
+
+@app.route('/markets/', methods=['GET'])
+def get_markets():
+    query = query_all_markets()
+    cursor = send_request(query)
+    markets = cursor.fetchall()
+
+    return markets
+
+@app.route('/Qui-sommes-nous')
+def qui_sommes_nous():
+    return render_template("Qui-sommes-nous.html")
+
+@app.route('/A-propos')
+def a_propos():
+    return render_template("A-propos.html")
+
+@app.route('/Tutoriel')
+def tuto():
+    return render_template("Tutoriel.html")
+
+@app.route('/Login')
+def login():
+    return render_template("Login.html")
+
+
+
+
+
+# Requêtes envoyées à la BDD postgresql
+
 def send_request(query):
     connection = psycopg2.connect(database="mychka", user="postgres", password="mychka", host="localhost", port=5432)
     cursor = connection.cursor()
     cursor.execute(query)
     
     return cursor
-
 
 def query_all_markets():
     query = """
@@ -63,7 +128,6 @@ def query_data_isochrone_filtered(cat_course, isochrone, radius):
     #print("query_________________________________", query + where_category + where_isochrone + where_valid)
     return query + where_category + where_isochrone + where_valid
 
-
 def query_data_isochrone(isochrone, radius):
     query = query_all_markets()
 
@@ -91,34 +155,10 @@ def query_categoriesAndColors():
     return query
 
 
-@app.route('/')
-def index():
-    # Markets
-    query = query_all_markets()
-    cursor = send_request(query)
-    markers = cursor.fetchall()
-
-    # Categories
-    query = query_categories()
-    cursor = send_request(query)
-    categories = [c for c, in cursor.fetchall()]
-
-    return render_template("Accueil.html", markers=markers,categs=categories)
 
 
-# Récupération des paramètres de la requête
-def getParams(path):
-    args=path.split("&")
-    
-    # Récupération de la position de l'utilisateur    
-    dict_position=json.loads(args[0])
-    user_position=str(dict_position["lng"])+","+str(dict_position["lat"])
-    
-    # Récupération des categories de courses
-    cat_course=args[1].split(',')
 
-    logging.debug(f'user_position : {user_position}, cat_course : {cat_course}')
-    return user_position, cat_course
+# Web services IGN
 
 def build_isochrone_url(user_position):
     base_url = "https://wxs.ign.fr/essentiels/geoportail/isochrone/rest/1.0.0/isochrone?"
@@ -159,6 +199,28 @@ def ign_service(url):
         raise  # Propagate the exception to the caller
 
 
+
+
+
+
+
+# Récupération des paramètres de la requête
+def getParams(path):
+    args=path.split("&")
+    
+    # Récupération de la position de l'utilisateur    
+    dict_position=json.loads(args[0])
+    user_position=str(dict_position["lng"])+","+str(dict_position["lat"])
+    
+    # Récupération des categories de courses
+    cat_course=args[1].split(',')
+
+    logging.debug(f'user_position : {user_position}, cat_course : {cat_course}')
+    return user_position, cat_course
+
+
+
+
 def format_geojson(geom):
     # Create a GeoJSON Polygon
     polygon = geojson.Polygon(geom['coordinates'])
@@ -176,43 +238,10 @@ def format_geojson(geom):
     return isochrone_geojson, isochrone_wkt
 
 
-# Récupération des commerces dans l'isochrone filtré par catégorie
-def build_request1(cat_course, isochrone_wkt, radius):
-    request="""SELECT json_build_object('type', 'FeatureCollection','features', json_agg(ST_AsGeoJSON( t.*)::json )) as geojson 
-    from (eco_circulaire
-    inner JOIN association
-        ON eco_circulaire.id=association.gid
-    inner JOIN sous_categ
-        ON association.id_sous_categ=sous_categ.id_sous_categ
-    inner JOIN categ
-        ON sous_categ.id_categ=categ.id_categ ) as t   
-        WHERE ST_Intersects(ST_Buffer(ST_ForceRHR(ST_Boundary(ST_GeomFromText('"""+ isochrone_wkt +"""',4326))),"""+ str(radius) +""", 'side=left'), t.geom)=TRUE 
-    AND ST_IsValid(t.geom) AND (
-    """
-    # Ajouter des categories de commerces demandées par l'utilisateur
-    i = 0
-    for cat in cat_course:
-        # uniquement pour la 1ere categorie
-        if i == 0 :
-            request=request + "t.nom_categ='" + cat + "'"
-        else:
-            request=request + " OR t.nom_categ='" + cat + "'" 
-        i=i+1
-
-    request = request + ');'
-    
-    #logging.debug(f' build_request sisi : {request}')
-    return request
 
 
-# Récupération des catégories
-#@app.route('/categories/', methods=['GET'])
-def get_categories():
-    query = """select distinct nom_categ from categ order by nom_categ asc"""
-    cursor = send_request(query)
-    categories = cursor.fetchall()
-    categories = [c for c, in categories]
-    return categories
+
+
 
 
 #Récupérer données de la page html indiquée apres le /
@@ -398,38 +427,62 @@ def send_file(path):
     return response_itineraire
 
 
-@app.route('/categories/', methods=['GET'])
-def get_categories():
-    query = query_categoriesAndColors()
-    cursor = send_request(query)
-    #categories_colors = cursor.fetchall()
-
-    categories_with_colors = [row[0] for row in cursor.fetchall()]
-
-    # Convertir la liste de tuples en JSON
-    categories_with_colors_json = json.dumps(categories_with_colors)
-
-    return categories_with_colors_json
-
-@app.route('/Qui-sommes-nous')
-def qui_sommes_nous():
-    return render_template("Qui-sommes-nous.html")
-
-@app.route('/A-propos')
-def a_propos():
-    return render_template("A-propos.html")
-
-@app.route('/Tutoriel')
-def tuto():
-    return render_template("Tutoriel.html")
-
-@app.route('/Login')
-def login():
-    return render_template("Login.html")
-
 
 if __name__ == '__main__':
     app.run(debug=True)
 
 
-    #cur?close adn conn.close
+
+
+
+
+
+
+
+
+
+
+
+
+# ça pourrait servir en dev ?
+
+#cur?close adn conn.close
+
+# Récupération des commerces dans l'isochrone filtré par catégorie
+def build_request_old(cat_course, isochrone_wkt, radius):
+    request="""SELECT json_build_object('type', 'FeatureCollection','features', json_agg(ST_AsGeoJSON( t.*)::json )) as geojson 
+    from (eco_circulaire
+    inner JOIN association
+        ON eco_circulaire.id=association.gid
+    inner JOIN sous_categ
+        ON association.id_sous_categ=sous_categ.id_sous_categ
+    inner JOIN categ
+        ON sous_categ.id_categ=categ.id_categ ) as t   
+        WHERE ST_Intersects(ST_Buffer(ST_ForceRHR(ST_Boundary(ST_GeomFromText('"""+ isochrone_wkt +"""',4326))),"""+ str(radius) +""", 'side=left'), t.geom)=TRUE 
+    AND ST_IsValid(t.geom) AND (
+    """
+    # Ajouter des categories de commerces demandées par l'utilisateur
+    i = 0
+    for cat in cat_course:
+        # uniquement pour la 1ere categorie
+        if i == 0 :
+            request=request + "t.nom_categ='" + cat + "'"
+        else:
+            request=request + " OR t.nom_categ='" + cat + "'" 
+        i=i+1
+
+    request = request + ');'
+    
+    #logging.debug(f' build_request sisi : {request}')
+    return request
+
+
+
+# Récupération des catégories
+#@app.route('/categories/', methods=['GET'])
+def get_categories_old():
+    query = """select distinct nom_categ from categ order by nom_categ asc"""
+    cursor = send_request(query)
+    categories = cursor.fetchall()
+    categories = [c for c, in categories]
+    return categories

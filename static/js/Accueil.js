@@ -5,6 +5,7 @@ var userLocation; // = { lat: 45.756681, lng: 4.831715 };
 var userLocationMarker;
 
 var liste_course = []; // 'Activite,Alimentaire,Bien,Dechet,Don,Equipement,Reparation,Restauration'
+
 var categories;
 
 const isochroneColor = '#80b1d3';
@@ -13,21 +14,36 @@ var isFirstLoad = true;
 
 
 
-window.onload = function () {
+
+document.addEventListener("DOMContentLoaded", function () {
     resetCheckboxes();
 
+    getCategories()
+        .then(res => {
+            categories = res
+        })
+        .catch(error => {
+            console.error('Une erreur s\'est produite :', error);
+        });
+
+    getMarkets()
+        .then(res => {
+            markets = res
+            showMarkets(markets[0][0]);
+        })
+        .catch(error => {
+            console.error('Une erreur s\'est produite :', error);
+        });
+});
+
+// window.onload = function () {
+// };
 
 
-};
 
-getCategoriesColors()
-    .then(res => {
-        categories = res
 
-    })
-    .catch(error => {
-        console.error('Une erreur s\'est produite :', error);
-    });
+
+
 
 
 
@@ -90,6 +106,7 @@ async function fetchAsync(url) {
 ///////////////////////////////// Carte Leaflet /////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
+
 var map = L.map('map');
 var osmUrl = 'https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png';
 var osmAttrib = 'Map data © OpenStreetMap contributors';
@@ -101,18 +118,14 @@ map.addControl(new L.Control.Fullscreen());
 var layerControl = L.control.layers().addTo(map);
 layerControl.options = { collapsed: false }
 
-// limitation de la navigation à Lyon
+// Limitation de la navigation à Lyon
 var p1 = L.point(45.913444276, 5.021678272), p2 = L.point(45.582896678, 4.703865076), bounds_gd_lyon = L.bounds(p1, p2);
 map.setMaxBounds(bounds_gd_lyon);
 
-
-//Gestion couche
+// Gestion des couches
 var drawnLayer = new L.layerGroup();
 
-/////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////// Echelle ////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////////
-
+// Echelle
 var scale = L.control.scale(
     options = {
         position: 'bottomleft',
@@ -123,67 +136,6 @@ var scale = L.control.scale(
     },
 ).addTo(map);
 
-/////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////// style commerces /////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////////
-
-// Définition du style en fonction du type de commerce
-function getColors(nom_categ) {
-
-    // categories.forEach(category => {
-    //     if (nom_categ === category.nom_categ) {
-    //         return {
-    //             fillColor: category.colors,
-    //         };
-    //     } else {
-    //         return {
-    //             fillColor: "#0099CC"
-    //         };
-    //     }
-    // });
-
-    if (nom_categ === "Déchet") {
-        return {
-            fillColor: "#b3de69",
-        };
-    } else if (nom_categ === "Alimentaire") {
-        return {
-            fillColor: "#fb8072",
-        };
-    } else if (nom_categ === "Textile") {
-        return {
-            fillColor: "#80b1d3",
-        };
-    } else if (nom_categ === "Activite") {
-        return {
-            fillColor: "#bebada",
-        };
-    } else if (nom_categ === "Bien-être") {
-        return {
-            fillColor: "#fccde5",
-        };
-    } else if (nom_categ === "Equipement Maison") {
-        return {
-            fillColor: "#8dd3c7",
-        };
-    } else if (nom_categ === "Restauration") {
-        return {
-            fillColor: "#fdb462",
-        };
-    } else if (nom_categ === "Don") {
-        return {
-            fillColor: "#ffffb3",
-        };
-    } else if (nom_categ === "Réparation") {
-        return {
-            fillColor: "#d9d9d9",
-        };
-    } else {
-        return {
-            fillColor: "#0099CC"
-        };
-    }
-}
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -213,13 +165,24 @@ function addMouseEvents(feature, leaflet_object) {
     });
 }
 
-function showMarkets(data) {
-    // Récupération des catégories de commerces
-    const categories = getCategories();
+// Style des markets
+function getColors(nom_categ) {
+    let fillColor = "#0099CC";
 
+    categories.forEach(category => {
+        if (nom_categ === category.nom_categ) {
+            fillColor = category.colors;
+        }
+    });
+
+    return { fillColor: fillColor };
+}
+
+// Affiche les markets
+function showMarkets(data) {
     // Ajout des points pour chaque catégorie de commerce
     categories.forEach(function (categorie) {
-        var markets = L.geoJson(data, {
+        var marketMarkers = L.geoJson(data, {
             style: function (feature) {
                 return {
                     radius: 6,
@@ -237,21 +200,22 @@ function showMarkets(data) {
             },
             onEachFeature: addMouseEvents,
             filter: function (feature, layer) {
-                return feature.properties.nom_categ == categorie;
+                return feature.properties.nom_categ == categorie.nom_categ;
             },
         }).addTo(map);
 
         // Ajout de la légende uniquement lors du premier chargement
         if (isFirstLoad) {
-            const color = getColors(categorie).fillColor;
-            const customLegend = customizeLayerControl(color, categorie);
-            layerControl.addOverlay(markets, customLegend);
+            const color = getColors(categorie.nom_categ).fillColor;
+            const customLegend = customizeLayerControl(color, categorie.nom_categ);
+            layerControl.addOverlay(marketMarkers, customLegend);
         }
     });
 
     // Mettre isFirstLoad à false après le premier chargement
     isFirstLoad = false;
 }
+
 
 function customizeLayerControl(color, name) {
     return '<i style="background-color:' + color + '; padding:1px; border:1px solid black; border-radius:4px; width:1px; position:relative;">&nbsp;&nbsp;&nbsp;&nbsp;</i>' + name;
@@ -294,34 +258,35 @@ function lineStyle(feature) {
     }
 };
 
-function affiche_itineraire(data_iti) {
-    // Ajout du geoJSON
-    var itineraire = L.geoJson(data_iti.geometry, {
-        style: lineStyle,
-        onEachFeature: function (feature, layer) {
-
-            var txt = layer.setText(data_iti.duration.toString().substring(0, 2) + ' min', { center: true, offset: 15, attributes: { fill: 'black' } })
-
-        }
-
-    }).addTo(map);
-    itineraire.setZIndex(1400)
-    drawnLayer.addLayer(itineraire)
-}
 
 
-function affiche_itineraire2(itineraire) {
-    // Ajout du geoJSON
-    var isochrone = L.geoJson(itineraire, {
-        style: lineStyle,
-        onEachFeature: function (feature, layer) {
-            var txt = layer.setText(data_iti.duration.toString().substring(0, 2) + ' min', { center: true, offset: 15, attributes: { fill: 'black' } })
-        }
+// function affiche_itineraire(data_iti) {
+//     // Ajout du geoJSON
+//     var itineraire = L.geoJson(data_iti.geometry, {
+//         style: lineStyle,
+//         onEachFeature: function (feature, layer) {
 
-    }).addTo(map);
-    itineraire.setZIndex(1400)
-    drawnLayer.addLayer(itineraire)
-}
+//             var txt = layer.setText(data_iti.duration.toString().substring(0, 2) + ' min', { center: true, offset: 15, attributes: { fill: 'black' } })
+
+//         }
+
+//     }).addTo(map);
+//     itineraire.setZIndex(1400)
+//     drawnLayer.addLayer(itineraire)
+// }
+
+// function affiche_itineraire2(itineraire) {
+//     // Ajout du geoJSON
+//     var isochrone = L.geoJson(itineraire, {
+//         style: lineStyle,
+//         onEachFeature: function (feature, layer) {
+//             var txt = layer.setText(data_iti.duration.toString().substring(0, 2) + ' min', { center: true, offset: 15, attributes: { fill: 'black' } })
+//         }
+
+//     }).addTo(map);
+//     itineraire.setZIndex(1400)
+//     drawnLayer.addLayer(itineraire)
+// }
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -368,15 +333,6 @@ function addLegend(layer, legend, name) {
 /////////////////////////////////////////////////////////////////////////////////
 
 var checkboxes = document.querySelectorAll("[id^='choix_commerce_']");
-
-function getCategories() {
-    const categories = new Set();
-    checkboxes.forEach(function (checkbox) {
-        //categories.push(checkbox.value);
-        categories.add(checkbox.value);
-    })
-    return categories
-}
 
 
 // Use Array.forEach to add an event listener to each checkbox.
@@ -445,14 +401,6 @@ document.getElementById('find_bulle').addEventListener("click", function () {
         recherche_bulle(userLocation, bounds_gd_lyon)
     }
 }, false);
-
-/////////////////////////////////////////////////////////////////////////////////
-///////////// Chargement des tous les commerces au 1er chargement////////////////
-/////////////////////////////////////////////////////////////////////////////////
-data = JSON.parse(document.getElementById("getdata").dataset.markers);
-data = data[0][0]
-showMarkets(data)
-
 
 
 
@@ -554,7 +502,40 @@ function checkCategories(listCategories) {
 
 
 
-async function getCategoriesColors() {
+async function getCategories() {
     var categories = await fetchAsync("/categories/")
     return categories
+}
+
+async function getMarkets() {
+    var markets = await fetchAsync("/markets/")
+    return markets
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// // Récupération des données cat_colors dans JavaScript
+// const catColorsData = document.getElementById('catColors').dataset.catColors;
+// // Convertir les données JSON en objet JavaScript
+// const catColors = JSON.parse(catColorsData);
+
+/////////////////////////////////////////////////////////////////////////////////
+///////////// Chargement des tous les commerces au 1er chargement////////////////
+/////////////////////////////////////////////////////////////////////////////////
+function getDataFromHTML() {
+    data = JSON.parse(document.getElementById("getdata").dataset.markers);
+    data = data[0][0];
+    return data;
+    //showMarkets(data)
 }
