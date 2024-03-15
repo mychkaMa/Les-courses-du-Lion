@@ -243,7 +243,8 @@ def send_file(path):
     # Récupération de l'isochrone de 15 min à partir de la position de l'utilisateur
     url_itineraire = build_itineraire_url(user_position)
     response_itineraire = ign_service(url_itineraire)
-    print('_______c moi___',response_itineraire)
+
+    #print('_______c moi___',response_itineraire)
         # Conversion en geojson de qualitey
     itineraire_geojson = response_itineraire['geometry']
     #itineraire_geojson_feature, itineraire_wkt = format_geojson(itineraire_geojson)
@@ -292,7 +293,7 @@ def send_file(path):
 
     # il faut au moins que 75% des sous_categories des catgéroies choisies soient prése,tent dans la bulle
     score_minimum= int(score_minimum * 0.75)
-    print("le score de diversité min est de : "+str(score_minimum))
+    #print("le score de diversité min est de : "+str(score_minimum))
 
     # agrandi l'isochrone par un buffer tant qu'il n'y a pas au moins 4 commerces dedans 
     while bulle_trouvee==False and iteration <11:
@@ -323,18 +324,12 @@ def send_file(path):
 
             ############### recupérationn des commerces dans les bulles #############################
             com_in_200m = gpd.overlay(gdf_com_dans_iso_buff,gdf_com_dans_iso.to_crs(2154), how='intersection',keep_geom_type=False)
-
             com_in_200m.rename(columns={ 'nom_categ_2' : 'nom_categ'}, inplace=True)
             
-            
-
-
         
             ############## Calcul du score de diversité pour chaque bulle  #########################
-
             score_ss_categ=com_in_200m.groupby('num_bulle').nom_sous_categ_2.nunique()
             
-
 
             # vérifie que le score_minimum de sous_catégories est atteint
             if(score_ss_categ[score_ss_categ.idxmax()] >= score_minimum):
@@ -348,53 +343,43 @@ def send_file(path):
                 #print("bulles avec toutes les categories demandées")
                 #print(score_categ.eq(len(cat_course)))  
                 
-                print("jointure score max et toutes categ")
+                #print("jointure score max et toutes categ")
                 cumul_score = pd.concat([score_ss_categ.eq(score_ss_categ.max()), score_categ.eq(len(cat_course))], axis=1)
                 
                 # Recherche si une bulle ayant toutes les categories de commerce et au moins 75% des sous_categories est trouvé 
                 if cumul_score.loc[cumul_score.nom_sous_categ_2 & cumul_score.nom_categ == True].empty == False:
-                    print("!!! bulle trouvé !!! ")
+                    #print("!!! bulle trouvé !!! ")
                     
                     # Recupère les numero de bulles qui respecte les 2 conditions
                     liste_bulles_ok=cumul_score.loc[cumul_score.nom_sous_categ_2 & cumul_score.nom_categ == True].index
-                    print(cumul_score.loc[cumul_score.nom_sous_categ_2 & cumul_score.nom_categ == True])         
+                    #print(cumul_score.loc[cumul_score.nom_sous_categ_2 & cumul_score.nom_categ == True])         
 
                     # Recupere toutes les geométries des bulles ok
                     bulles_ok = gdf_com_dans_iso_buff.to_crs(4326).loc[gdf_com_dans_iso_buff.num_bulle.isin(liste_bulles_ok)]
 
-
                     #choisi la bulle la plus proche de la position de l'utilisateur
                     id_best_bulle=bulles_ok.iloc[bulles_ok.to_crs(4326).centroid.sindex.nearest(Point(path_dict["lng"],path_dict["lat"]))[1]]['num_bulle'].values[0]
-                    print(id_best_bulle)
-
+                    #print(id_best_bulle)
 
                     #id_best_bulle=score_nb_com.loc[score_nb_com.index.isin(cumul_score.loc[cumul_score.nom_sous_categ_2 & cumul_score.nom_categ == True].index)].idxmax()
                     bulle_trouvee=True
 
-
             iteration = iteration +1
-
-
 
     if iteration >= 10:
         response_itineraire ={'message': 'pas de bulle'}
         return response_itineraire
-
-
-
+    
 
     ############## extraction de la meilleure des bulles ##################################
 
     best_bulle=com_in_200m.to_crs(4326).loc[com_in_200m.num_bulle == id_best_bulle]
-
     commerces_bulle=best_bulle.to_json()
 
     ############## polygone de la meilleure des bulles ##################################
 
     best_bulle_buff = gdf_com_dans_iso_buff.to_crs(4326).loc[gdf_com_dans_iso_buff.num_bulle == id_best_bulle]
-
     bulle=best_bulle_buff.to_json() 
-
     centre_bulle=best_bulle_buff.to_crs(4326).centroid
 
 

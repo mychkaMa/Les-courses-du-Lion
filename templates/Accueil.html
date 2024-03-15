@@ -79,27 +79,28 @@
   </header>
 
 
-      
+
   <div class="row">
 
-    
-    <div class="column">
+    <div class="column form-column">
 
       <!-- Comment se localiser ? -->
-      Une localisation est requise pour trouver une bulle de commerce.<br />
-      Plusieurs possibilités s'offrent à vous :
-      <ul>
-        <li>Autoriser le naviguateur à accéder à votre position</li>
-        <button id="webLocation" class="upgrade-btn">Web localisation</button>
-        <li>Entrer votre adresse dans la barre de recherche</li>
-        <li>Cliquer mnauellement sur la carte</li>
-        <li>Générer une adresse aléatoire</li>
-        <button id="randomLocation" class="upgrade-btn">Localisation aléatoire</button>
-      </ul>
+      <div class="location">
+        Une localisation est requise pour trouver une bulle de commerce.<br />
+        Plusieurs possibilités s'offrent à vous :
+        <ul>
+          <li>Autoriser le naviguateur à accéder à votre position</li>
+          <button id="webLocation" class="location-btn">Web localisation</button>
+          <li>Entrer votre adresse dans la barre de recherche</li>
+          <li>Cliquer manuellement sur la carte</li>
+          <li>Générer une adresse aléatoire</li>
+          <button id="randomLocation" class="location-btn">Localisation aléatoire</button>
+        </ul>
 
-      <div id="userLocationDisplay">
-        Votre position : <br />
-        <span id="userCoords"></span>
+        <div id="userLocationDisplay">
+          Votre position : <br />
+          <span id="userCoords"></span>
+        </div>
       </div>
 
 
@@ -120,15 +121,15 @@
       <button id="find_bulle" class="upgrade-btn">Trouver une bulle de commerce !</button>
     </div>
 
-    <!-- Carte -->
-    <div class="column">
+    <div class="map-column">
       <!-- Récupération des données de postgres pour les transmettre au JS -->
       <div id="getdata" data-markers='{{ markers|tojson }}'></div>
+      <!-- Carte -->
       <div id="map"></div>
       <script src="{{ url_for('static', filename='js/Accueil.js') }}"></script>
     </div>
-  </div>
 
+  </div>
 
 </body>
 

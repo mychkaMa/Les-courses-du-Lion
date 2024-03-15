@@ -1,10 +1,5 @@
-#map {
-  width: 1100px;
-  height: 650px;
-  position: relative;
-  bottom: 0;
-  right: 0;
-}
+
+
 
 #bienvenue {
   text-align: justify;
@@ -291,4 +286,59 @@ label::before {
 
 .u-section-2 .u-sheet-1 {
   min-height: 544px;
+}
+
+
+
+
+
+
+
+/* Division de la page en 2 colonnes */
+.row {
+  display: flex;
+  flex-direction: row;
+  height: 100vh;
+}
+
+.form-column {
+  flex: 1;
+  max-width: 25%;
+  height: 100%;
+  overflow-y: auto;
+  position: relative;
+}
+
+.map-column {
+  flex: 3; 
+  max-width: 75%;
+  height: 100%;
+  position: relative;
+}
+
+#map {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+
+
+
+
+.location-btn {
+  display: block;
+  margin: 10px auto;
+  padding: 10px 20px;
+  border: 2px solid #ffffff;
+  background-color: #a0ce92;
+  border-radius: 50px;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 600;
+  transition: .3s ease;
+}
+
+.location-btn:hover {
+  background-color: #0f94d6;
 }

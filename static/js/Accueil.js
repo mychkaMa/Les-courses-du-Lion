@@ -7,36 +7,27 @@ var userLocationMarker;
 var liste_course = []; // 'Activite,Alimentaire,Bien,Dechet,Don,Equipement,Reparation,Restauration'
 var categories;
 
+const isochroneColor = '#80b1d3';
+
+var isFirstLoad = true;
 
 
 
-window.onload = function() {
+window.onload = function () {
     resetCheckboxes();
+
+
+
 };
 
+getCategoriesColors()
+    .then(res => {
+        categories = res
 
-initialize();
-
-function initialize() {
-    categories = getCategoriesColors()
-        .then(categories => {
-            console.log('Valeur récupérée :', categories);
-
-            // Utilisez ici les données récupérées
-        })
-        .catch(error => {
-            console.error('Une erreur s\'est produite :', error);
-        });
-
-    // // Maintenant, vous pouvez utiliser forEach()
-    // categories.forEach(category => {
-    //     console.log(category.nom_categ, category.colors);
-    //     // Faites ce que vous devez faire avec chaque catégorie ici
-    // });
-
-}
-
-
+    })
+    .catch(error => {
+        console.error('Une erreur s\'est produite :', error);
+    });
 
 
 
@@ -116,7 +107,7 @@ map.setMaxBounds(bounds_gd_lyon);
 
 
 //Gestion couche
-var drawn_layer = new L.layerGroup();
+var drawnLayer = new L.layerGroup();
 
 /////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////// Echelle ////////////////////////////////////
@@ -139,17 +130,17 @@ var scale = L.control.scale(
 // Définition du style en fonction du type de commerce
 function getColors(nom_categ) {
 
-    // categoriesTest.forEach((t) => {
-    //     if (nom_categ === t.nom_categ) {
+    // categories.forEach(category => {
+    //     if (nom_categ === category.nom_categ) {
     //         return {
-    //             fillColor: "#b3de69",
+    //             fillColor: category.colors,
     //         };
     //     } else {
     //         return {
     //             fillColor: "#0099CC"
     //         };
     //     }
-    // })
+    // });
 
     if (nom_categ === "Déchet") {
         return {
@@ -195,39 +186,38 @@ function getColors(nom_categ) {
 }
 
 
-
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////// Afficher les commerces sur la carte//////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
-function show_commerces(data) {
-
-    // Ajout d'évènements : zoom + buffer + couleur
-    function mouse_events(feature, leaflet_object) {
-        leaflet_object.on('click', function (event) {
-            map.setView(event.latlng, 16);
-        });
-        leaflet_object.on('mouseover', function (event) {
-            var leaflet_object = event.target;
-            leaflet_object.setRadius(12),
-                leaflet_object.setStyle({
-                    color: "white",
-                    weight: 5
-                })
-        });
-        leaflet_object.on('mouseout', function (event) {
-            var leaflet_object = event.target;
+// Ajout d'évènements : zoom + buffer + couleur
+function addMouseEvents(feature, leaflet_object) {
+    leaflet_object.on('click', function (event) {
+        map.setView(event.latlng, 16);
+    });
+    leaflet_object.on('mouseover', function (event) {
+        var leaflet_object = event.target;
+        leaflet_object.setRadius(12),
             leaflet_object.setStyle({
                 color: "white",
-                weight: 1
-            }),
-                leaflet_object.setRadius(6)
-        });
-    }
+                weight: 5
+            })
+    });
+    leaflet_object.on('mouseout', function (event) {
+        var leaflet_object = event.target;
+        leaflet_object.setStyle({
+            color: "white",
+            weight: 1
+        }),
+            leaflet_object.setRadius(6)
+    });
+}
 
-    // Ajout des points, une couche par categorie de commerce
-    //categories = ['Activite', 'Alimentaire', 'Bien-être', 'Dechet', 'Don', 'Equipement Maison', 'Reparation', 'Restauration', 'Textile'];
+function showMarkets(data) {
+    // Récupération des catégories de commerces
     const categories = getCategories();
+
+    // Ajout des points pour chaque catégorie de commerce
     categories.forEach(function (categorie) {
         var markets = L.geoJson(data, {
             style: function (feature) {
@@ -240,23 +230,32 @@ function show_commerces(data) {
             },
             pointToLayer: function (feature, latlng) {
                 var marker = L.circleMarker(latlng, getColors(feature.properties.nom_categ)).bindPopup(
-                    '<styleTitre><p style= "font-weight : bold">' + feature.properties.name + '</p></styleTitre><styleColonne><p style= "font-weight : bold">Catégorie</styleColonne><br><styleText>' + feature.properties.nom_categ + '</styleText><styleColonne><p style= "font-weight : bold">Offre</styleColonne><br><styleText>' + feature.properties.offre_stru + '</styleText><styleColonne><p style= "font-weight : bold">Adresse</styleColonne><br><styleText>' + feature.properties.numvoie + ' ' + feature.properties.voie + ' ' + feature.properties.code_posta + ' ' + feature.properties.commune + '</styleText>',
+                    '<styleTitre><p style="font-weight:bold">' + feature.properties.name + '</p></styleTitre><styleColonne><p style="font-weight:bold">Catégorie</styleColonne><br><styleText>' + feature.properties.nom_categ + '</styleText><styleColonne><p style="font-weight:bold">Offre</styleColonne><br><styleText>' + feature.properties.offre_stru + '</styleText><styleColonne><p style="font-weight:bold">Adresse</styleColonne><br><styleText>' + feature.properties.numvoie + ' ' + feature.properties.voie + ' ' + feature.properties.code_posta + ' ' + feature.properties.commune + '</styleText>',
                     { className: feature.properties.nom_categ_esp + "_popup" });
                 marker.on('click', function (ev) { marker.openPopup(marker.getLatLng()) })
                 return marker
             },
-            onEachFeature: mouse_events,
+            onEachFeature: addMouseEvents,
             filter: function (feature, layer) {
                 return feature.properties.nom_categ == categorie;
             },
         }).addTo(map);
 
-        // Légende
-        layerControl.addOverlay(markets, '<i style="background-color:' + getColors(categorie).fillColor + '; padding:5px ; border:1px solid black ; border-radius:4px; width: 10px; position: relative;">&nbsp;&nbsp;&nbsp;&nbsp;</i> ' + categorie);
+        // Ajout de la légende uniquement lors du premier chargement
+        if (isFirstLoad) {
+            const color = getColors(categorie).fillColor;
+            const customLegend = customizeLayerControl(color, categorie);
+            layerControl.addOverlay(markets, customLegend);
+        }
     });
 
+    // Mettre isFirstLoad à false après le premier chargement
+    isFirstLoad = false;
 }
 
+function customizeLayerControl(color, name) {
+    return '<i style="background-color:' + color + '; padding:1px; border:1px solid black; border-radius:4px; width:1px; position:relative;">&nbsp;&nbsp;&nbsp;&nbsp;</i>' + name;
+}
 
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////// Afficher la bulle sur la carte //////////////////////////
@@ -281,7 +280,7 @@ function affiche_bulle(data_bulle) {
     bulle.bringToBack()
     map.fitBounds(bulle.getBounds());
 
-    drawn_layer.addLayer(bulle)
+    drawnLayer.addLayer(bulle)
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -307,7 +306,7 @@ function affiche_itineraire(data_iti) {
 
     }).addTo(map);
     itineraire.setZIndex(1400)
-    drawn_layer.addLayer(itineraire)
+    drawnLayer.addLayer(itineraire)
 }
 
 
@@ -321,7 +320,7 @@ function affiche_itineraire2(itineraire) {
 
     }).addTo(map);
     itineraire.setZIndex(1400)
-    drawn_layer.addLayer(itineraire)
+    drawnLayer.addLayer(itineraire)
 }
 
 
@@ -329,33 +328,39 @@ function affiche_itineraire2(itineraire) {
 /////////////////////// Afficher l isochrone sur la carte //////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
-
-function IsoStyle(feature) {
+function isochroneStyle(feature) {
     return {
         fillColor: 'white',
-        weight: 2,
+        weight: 3,
         opacity: 1,
-        color: '#80b1d3',
+        color: isochroneColor,
         fillOpacity: 0,
         dashArray: '5, 10',
         dashOffset: '10'
     }
 };
 
-function affiche_isochrone(data_iso) {
-    // Ajout du geoJSON
-    var isochrone = L.geoJson(data_iso, {
-        style: IsoStyle,
+function showIsochrone(isochrone) {
+    // Ajout du geoJSON à la carte
+    var isochrone = L.geoJson(isochrone, {
+        style: isochroneStyle,
         onEachFeature: function (feature, layer) {
-            var txt = layer.setText('10 min', { offset: 15, attributes: { fill: '#80b1d3', font: 'bold 30px' } })
+            var txt = layer.setText('10 min', { offset: 15, attributes: { fill: isochroneColor, font: 'bold 50px' } })
         }
     }).addTo(map);
-    layerControl.addOverlay(isochrone, "Isochrone 10m");
+
     isochrone.setZIndex(1100);
+    drawnLayer.addLayer(isochrone)
+
+    legendName = "Isochrone 15m"
+    const customLegend = customizeLayerControl(isochroneColor, legendName)
+    layerControl.addOverlay(isochrone, customLegend);
 }
 
 
-
+function addLegend(layer, legend, name) {
+    layerControl.addOverlay(layer, name);
+}
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -388,7 +393,7 @@ checkboxes.forEach(function (checkbox) {
  * Décocher toutes les checkboxes au chargement de la page
  */
 function resetCheckboxes() {
-    checkboxes.forEach(function(checkbox) {
+    checkboxes.forEach(function (checkbox) {
         checkbox.checked = false;
     });
 
@@ -404,12 +409,11 @@ async function recherche_bulle(userLocation) {
 
     // calcul de la bulle
     //suppression des anciennes bulles
-    drawn_layer.eachLayer(function (layer) {
+    drawnLayer.eachLayer(function (layer) {
         map.removeLayer(layer)
     });
 
     var data_fetch = await fetchAsync("/itineraire/" + JSON.stringify(userLocation) + "&" + liste_course.toString())
-    //console.log(data_fetch); 
 
     if (data_fetch['message'] == 'pas de bulle') {
         alert("Notre service ne trouve pas de bulle pour votre recherche...");
@@ -417,17 +421,16 @@ async function recherche_bulle(userLocation) {
     if (data_fetch['message'] == 'fund') {
         // supprime les couches existantes
         map.eachLayer(function (layer) {
-            console.log('layer',layer)
-            //map.removeLayer(layer);
+            //console.log('layer', layer)
+            map.removeLayer(layer);
         });
 
         osm.addTo(map);
-        affiche_isochrone(JSON.parse(data_fetch['isochrone']));
+        showIsochrone(JSON.parse(data_fetch['isochrone']));
         //affiche_bulle(JSON.parse(data_fetch['bulle']));
         //affiche_itineraire2(JSON.parse(data_fetch['itineraire']));
-        show_commerces(data_fetch['markers'][0][0]);
+        showMarkets(data_fetch['markers'][0][0]);
     }
-
 }
 
 
@@ -448,7 +451,7 @@ document.getElementById('find_bulle').addEventListener("click", function () {
 /////////////////////////////////////////////////////////////////////////////////
 data = JSON.parse(document.getElementById("getdata").dataset.markers);
 data = data[0][0]
-show_commerces(data)
+showMarkets(data)
 
 
 
@@ -465,8 +468,8 @@ show_commerces(data)
 document.getElementById('randomLocation').addEventListener("click", function () {
     var minLat = 45.71;
     var maxLat = 45.80;
-    var minLng = 4.78;
-    var maxLng = 4.89;
+    var minLng = 4.8;
+    var maxLng = 4.88;
 
     // Générer un nombre décimal aléatoire compris entre min (inclus) et max (exclus)
     var lat = Math.random() * (maxLat - minLat) + minLat;
@@ -553,6 +556,5 @@ function checkCategories(listCategories) {
 
 async function getCategoriesColors() {
     var categories = await fetchAsync("/categories/")
-    console.log('categoriiies colors', categories)
     return categories
 }
