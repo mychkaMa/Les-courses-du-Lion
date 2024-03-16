@@ -2,7 +2,9 @@
  * Variables globales
  */
 var userLocation; // = { lat: 45.756681, lng: 4.831715 };
+
 var userLocationMarker;
+var isochroneLayer;
 
 var liste_course = []; // 'Activite,Alimentaire,Bien,Dechet,Don,Equipement,Reparation,Restauration'
 
@@ -179,10 +181,10 @@ function getColors(nom_categ) {
 }
 
 // Affiche les markets
-function showMarkets(data) {
+function showMarkets(geoJsonData) {
     // Ajout des points pour chaque catégorie de commerce
     categories.forEach(function (categorie) {
-        var marketMarkers = L.geoJson(data, {
+        var marketMarkers = L.geoJson(geoJsonData, {
             style: function (feature) {
                 return {
                     radius: 6,
@@ -305,22 +307,23 @@ function isochroneStyle(feature) {
     }
 };
 
-function showIsochrone(isochrone) {
+function showIsochrone(geoJsonData) {
     // Ajout du geoJSON à la carte
-    var isochrone = L.geoJson(isochrone, {
+    isochroneLayer = L.geoJson(geoJsonData, {
         style: isochroneStyle,
         onEachFeature: function (feature, layer) {
-            var txt = layer.setText('10 min', { offset: 15, attributes: { fill: isochroneColor, font: 'bold 50px' } })
+            var txt = layer.setText('15 min', { offset: 15, attributes: { fill: isochroneColor, font: 'bold 50px' } })
         }
     }).addTo(map);
 
-    isochrone.setZIndex(1100);
-    drawnLayer.addLayer(isochrone)
+    isochroneLayer.setZIndex(1100);
+    drawnLayer.addLayer(isochroneLayer)
 
-    legendName = "Isochrone 15m"
+    var legendName = "Isochrone 15m"
     const customLegend = customizeLayerControl(isochroneColor, legendName)
-    layerControl.addOverlay(isochrone, customLegend);
+    layerControl.addOverlay(isochroneLayer, customLegend);
 }
+
 
 
 function addLegend(layer, legend, name) {
@@ -375,14 +378,18 @@ async function recherche_bulle(userLocation) {
         alert("Notre service ne trouve pas de bulle pour votre recherche...");
     }
     if (data_fetch['message'] == 'fund') {
-        // supprime les couches existantes
-        map.eachLayer(function (layer) {
-            //console.log('layer', layer)
-            map.removeLayer(layer);
-        });
 
-        osm.addTo(map);
+        console.log('layercontrol',layerControl);
+
+        // Clean isochrone
+        if (isochroneLayer) {
+            map.removeLayer(isochroneLayer);
+            layerControl.removeLayer(isochroneLayer);    
+        }
         showIsochrone(JSON.parse(data_fetch['isochrone']));
+
+
+
         //affiche_bulle(JSON.parse(data_fetch['bulle']));
         //affiche_itineraire2(JSON.parse(data_fetch['itineraire']));
         showMarkets(data_fetch['markers'][0][0]);
@@ -477,7 +484,7 @@ document.getElementById('webLocation').addEventListener("click", function () {
  */
 function checkUserLocation(lat, lng) {
     if (!bounds_gd_lyon.contains([[lat, lng]])) {
-        alert("Vous êtes trop loin des commerces...");
+        alert("Vous êtes trop loin des commerces... Revenez dans le Grand Lyon !");
         return false
     }
     return true;

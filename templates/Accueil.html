@@ -86,15 +86,14 @@
 
       <!-- Comment se localiser ? -->
       <div class="location">
-        Une localisation est requise pour trouver une bulle de commerce.<br />
-        Plusieurs possibilités s'offrent à vous :
+        <h4>1. Où êtes-vous ?</h4>
         <ul>
-          <li>Autoriser le naviguateur à accéder à votre position</li>
-          <button id="webLocation" class="location-btn">Web localisation</button>
           <li>Entrer votre adresse dans la barre de recherche</li>
-          <li>Cliquer manuellement sur la carte</li>
-          <li>Générer une adresse aléatoire</li>
-          <button id="randomLocation" class="location-btn">Localisation aléatoire</button>
+          <li>Cliquer manuellement sur la carte</li><br />
+          <li>
+            <button id="webLocation" class="location-btn">Web localisation</button>
+            <button id="randomLocation" class="location-btn">Localisation aléatoire</button>
+          </li>
         </ul>
 
         <div id="userLocationDisplay">
@@ -106,7 +105,7 @@
 
       <!-- Liste des catégories -->
       <div id="course">
-        <b>Choisissez un ou plusieurs type(s) de courses :</b>
+        <h4>2. Faites vos emplettes :</h4>
       </div>
       <div id="filtre_course">
         <div id="catColors" data-cat-colors="{{ cat_colors }}"></div>
